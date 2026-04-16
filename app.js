@@ -809,7 +809,10 @@ function formatRut(value) {
 }
 
 function formatPhone(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
   let digits = String(value || '').replace(/\D/g, '');
+  if (!digits) return '';
   if (digits.startsWith('56')) digits = digits.slice(2);
   if (digits.startsWith('0')) digits = digits.slice(1);
   if (!digits.startsWith('9')) digits = `9${digits}`;
@@ -2354,18 +2357,12 @@ clientForm.addEventListener('submit', event => {
   }
   clientRutInput.setCustomValidity('');
 
-  if (!isValidPhone(phone)) {
+  if (phone && !isValidPhone(phone)) {
     clientPhoneInput.setCustomValidity('El teléfono debe tener formato +5691111111');
     clientPhoneInput.reportValidity();
     return;
   }
   clientPhoneInput.setCustomValidity('');
-
-  if (!email) {
-    clientForm.elements.email.setCustomValidity('El correo es obligatorio');
-    clientForm.elements.email.reportValidity();
-    return;
-  }
   clientForm.elements.email.setCustomValidity('');
 
   if (!name || !address) return;
@@ -2444,7 +2441,7 @@ clientEditForm.addEventListener('submit', event => {
   const hiredLater = Boolean(data.get('hiredLater'));
   const assignedTo = normalizeAssignedToValue(data.get('assignedTo'));
 
-  if (!clientId || !name || !email || !address) return;
+  if (!clientId || !name || !address) return;
 
   if (!isValidRut(rut)) {
     clientEditRutInput.setCustomValidity('RUT inválido');
@@ -2453,7 +2450,7 @@ clientEditForm.addEventListener('submit', event => {
   }
   clientEditRutInput.setCustomValidity('');
 
-  if (!isValidPhone(phone)) {
+  if (phone && !isValidPhone(phone)) {
     clientEditPhoneInput.setCustomValidity('Teléfono inválido');
     clientEditPhoneInput.reportValidity();
     return;
