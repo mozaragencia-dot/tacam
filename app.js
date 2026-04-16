@@ -111,7 +111,10 @@ const moduleTabs = document.querySelectorAll('[data-module-tab]');
 const modulePanels = document.querySelectorAll('[data-module-panel]');
 const toast = document.getElementById('toast');
 const syncIndicator = document.getElementById('sync-indicator');
+const clientsShowMoreBtn = document.getElementById('clients-show-more');
+const CLIENTS_PAGE_SIZE = 10;
 let toastTimer = null;
+let clientsVisibleLimit = CLIENTS_PAGE_SIZE;
 
 function switchModule(moduleName) {
   moduleTabs.forEach(tab => {
@@ -950,6 +953,7 @@ function renderClients() {
   clientsBody.replaceChildren();
 
   if (!clients.length) {
+    if (clientsShowMoreBtn) clientsShowMoreBtn.hidden = true;
     const row = document.createElement('tr');
     const cell = document.createElement('td');
     cell.colSpan = 7;
@@ -959,7 +963,10 @@ function renderClients() {
     return;
   }
 
-  clients.forEach(client => {
+  const visibleLimit = Math.min(clientsVisibleLimit, clients.length);
+  const visibleClients = clients.slice(0, visibleLimit);
+
+  visibleClients.forEach(client => {
     const row = document.createElement('tr');
     appendCell(row, client.name || '');
     appendCell(row, client.rut || '');
@@ -971,6 +978,16 @@ function renderClients() {
     appendCell(row, representativeName ? `${representativeName} (representa a ${client.name || '-'})` : '-');
     clientsBody.appendChild(row);
   });
+
+  if (!clientsShowMoreBtn) return;
+  if (visibleLimit >= clients.length) {
+    clientsShowMoreBtn.hidden = true;
+    return;
+  }
+  clientsShowMoreBtn.hidden = false;
+  const pending = clients.length - visibleLimit;
+  const nextBatch = Math.min(CLIENTS_PAGE_SIZE, pending);
+  clientsShowMoreBtn.textContent = `Mostrar ${nextBatch} más`;
 }
 
 function getLastBookingForClient(clientId, predicate = null) {
@@ -2416,7 +2433,7 @@ clientForm.addEventListener('submit', event => {
 
   saveClients(clients);
   clientForm.reset();
-  clientPhoneInput.value = '+569';
+  clientPhoneInput.value = '';
   imputadoStatusInput.value = 'no_imputado';
   inPrisonInput.value = 'no';
   updateImputadoModuleVisibility();
@@ -3151,7 +3168,13 @@ prisonMonthInput.value = currentMonth;
 lawyerCalendarMonth.value = currentMonth;
 gendarmeriaEmailInput.value = GENDARMERIA_RECIPIENTS[0];
 gendarmeriaEmail2Input.value = GENDARMERIA_RECIPIENTS[1];
-clientPhoneInput.value = '+569';
+clientPhoneInput.value = '';
+if (clientsShowMoreBtn) {
+  clientsShowMoreBtn.addEventListener('click', () => {
+    clientsVisibleLimit += CLIENTS_PAGE_SIZE;
+    renderClients();
+  });
+}
 assignedToSelect.disabled = !hiredLawyerInput.checked;
 updateImputadoModuleVisibility();
 updateRepresentativeVisibility();
