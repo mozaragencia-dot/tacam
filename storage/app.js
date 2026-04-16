@@ -21,6 +21,7 @@ const selectedClientEmailInput = document.getElementById('selected-client-email'
 const selectedClientAddressInput = document.getElementById('selected-client-address');
 const clientEditForm = document.getElementById('client-edit-form');
 const clientEditSelect = document.getElementById('client-edit-select');
+const deleteClientBtn = document.getElementById('delete-client-btn');
 const bookingForm = document.getElementById('booking-form');
 const lawyerFilter = document.getElementById('lawyer-filter');
 const agendaMonthInput = document.getElementById('agenda-month');
@@ -1302,6 +1303,7 @@ function renderClientEditOptions() {
     updateEditRepresentativeVisibility();
     clientEditAssignedToSelect.value = UNASSIGNED_LAWYER_LABEL;
     clientEditAssignedToSelect.disabled = true;
+    if (deleteClientBtn) deleteClientBtn.disabled = true;
   }
 }
 
@@ -1311,6 +1313,7 @@ function fillClientEditForm(clientId) {
     clientEditForm.reset();
     clientEditImputadoStatusInput.value = 'no_imputado';
     updateEditRepresentativeVisibility();
+    if (deleteClientBtn) deleteClientBtn.disabled = true;
     return;
   }
 
@@ -1340,6 +1343,7 @@ function fillClientEditForm(clientId) {
   clientEditHiredLaterInput.checked = Boolean(hiredBooking);
   clientEditAssignedToSelect.value = hiredBooking?.assignedTo || UNASSIGNED_LAWYER_LABEL;
   clientEditAssignedToSelect.disabled = !clientEditHiredLaterInput.checked;
+  if (deleteClientBtn) deleteClientBtn.disabled = false;
 }
 
 function getLawyerStats(lawyerName) {
@@ -2921,6 +2925,32 @@ if (prisonClientSelect) {
   });
 }
 if (clientEditSelect) clientEditSelect.addEventListener('change', () => fillClientEditForm(clientEditSelect.value));
+if (deleteClientBtn) {
+  deleteClientBtn.addEventListener('click', () => {
+    const clientId = String(clientEditSelect?.value || '').trim();
+    if (!clientId) {
+      showToast('Selecciona un contacto para borrar.');
+      return;
+    }
+    const clients = getClients();
+    const client = clients.find(item => item.id === clientId);
+    if (!client) {
+      showToast('El contacto ya no existe.');
+      renderAll();
+      return;
+    }
+    if (!window.confirm(`¿Borrar definitivamente a ${client.name || 'este contacto'} y sus reservas asociadas?`)) return;
+
+    saveClients(clients.filter(item => item.id !== clientId));
+    saveBookings(getBookings().filter(booking => booking.clientId !== clientId));
+    clientEditForm.reset();
+    if (clientEditSelect) clientEditSelect.value = '';
+    deleteClientBtn.disabled = true;
+    renderAll();
+    playSaveChime();
+    showToast('Contacto borrado correctamente.');
+  });
+}
 clientEditRutInput.addEventListener('input', () => {
   clientEditRutInput.value = formatRut(clientEditRutInput.value);
 });
@@ -3402,6 +3432,7 @@ lawyerCalendarMonth.value = currentMonth;
 gendarmeriaEmailInput.value = GENDARMERIA_RECIPIENTS[0];
 gendarmeriaEmail2Input.value = GENDARMERIA_RECIPIENTS[1];
 clientPhoneInput.value = '';
+if (deleteClientBtn) deleteClientBtn.disabled = true;
 if (clientsShowMoreBtn) {
   clientsShowMoreBtn.addEventListener('click', () => {
     clientsVisibleLimit += CLIENTS_PAGE_SIZE;
