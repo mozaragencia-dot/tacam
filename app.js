@@ -114,6 +114,14 @@ const toast = document.getElementById('toast');
 const syncIndicator = document.getElementById('sync-indicator');
 const clientsShowMoreBtn = document.getElementById('clients-show-more');
 const CLIENTS_PAGE_SIZE = 10;
+const APP_CONFIG = {
+  twilioEndpoint: 'twilio-whatsapp.php',
+  internalToken: String(
+    window.__APP_INTERNAL_TOKEN
+    || document.querySelector('meta[name=\"app-internal-token\"]')?.content
+    || ''
+  ).trim()
+};
 let toastTimer = null;
 let clientsVisibleLimit = CLIENTS_PAGE_SIZE;
 
@@ -725,33 +733,65 @@ async function sendEmailViaBrevo(booking, subject, message) {
   }
 }
 
-async function sendWhatsAppViaTwilio(phoneRaw, message) {
+function normalizeWhatsAppPhone(phoneRaw) {
   const destination = cleanPhone(phoneRaw);
-  if (!destination) return false;
+  if (!destination) return '';
+  const normalized = destination.startsWith('+') ? destination : `+${destination}`;
+  return /^\+\d{8,15}$/.test(normalized) ? normalized : '';
+}
+
+function formatReadableDate(dateValue) {
+  if (!dateValue) return '';
+  const date = new Date(`${dateValue}T12:00:00`);
+  if (Number.isNaN(date.getTime())) return dateValue;
+  return date.toLocaleDateString('es-CL', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
+}
+
+async function sendWhatsAppNotification(phoneRaw, message) {
+  const toPhone = normalizeWhatsAppPhone(phoneRaw);
+  const cleanMessage = String(message || '').trim();
+  if (!toPhone || !cleanMessage) {
+    return { ok: false, status: 'invalid_payload', twilioSid: '', errorMessage: 'phone_or_message_invalid' };
+  }
+  if (!APP_CONFIG.internalToken) {
+    console.warn('APP internal token missing for Twilio WhatsApp.');
+    return { ok: false, status: 'missing_internal_token', twilioSid: '', errorMessage: 'missing_internal_token' };
+  }
+
+  const headers = { 'Content-Type': 'application/json' };
+  headers['X-Internal-Token'] = APP_CONFIG.internalToken;
 
   try {
-    const response = await fetch('twilio-whatsapp.php', {
+    const response = await fetch(APP_CONFIG.twilioEndpoint, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        toPhone: `+${destination}`,
-        message
-      })
+      headers,
+      body: JSON.stringify({ toPhone, message: cleanMessage })
     });
-    if (!response.ok) {
-      console.warn('Twilio WhatsApp error', await response.text());
-      return false;
-    }
-    return true;
+    const data = await response.json().catch(() => ({}));
+    return {
+      ok: Boolean(response.ok && data.ok),
+      status: String(data.status || (response.ok ? 'sent' : 'error')),
+      twilioSid: String(data.twilio_sid || ''),
+      errorMessage: String(data.error_message || '')
+    };
   } catch (error) {
     console.warn('Twilio WhatsApp request failed', error);
-    return false;
+    return { ok: false, status: 'request_failed', twilioSid: '', errorMessage: 'request_failed' };
   }
+}
+
+function buildWhatsAppConfirmationMessage(booking) {
+  const name = String(booking?.customer || '').trim();
+  const dateText = formatReadableDate(booking?.date);
+  const timeText = String(booking?.time || '').trim();
+  if (!name || !dateText || !timeText) return '';
+  return `Hola ${name}, tu cita ha sido confirmada.\n\nTe esperamos el día ${dateText} a las ${timeText}.\n\nSi necesitas modificarla, responde a este mensaje o contáctanos.\n\nEquipo TACAM`;
 }
 
 async function notifyBooking(booking) {
   if (!hasNotificationConsent(booking)) return false;
-  return sendWhatsAppViaTwilio(booking.phone, buildTacamMessage(booking));
+  const result = await sendWhatsAppNotification(booking.phone, buildTacamMessage(booking));
+  return result.ok;
 }
 
 function buildRescheduleMessage(booking, fromDate, toDate) {
@@ -795,15 +835,18 @@ async function notifyBookingChannels(booking, message, emailSubject) {
 
   const targets = [cleanPhone(booking.phone), getLawyerPhone(booking.assignedTo)].filter(Boolean);
   const uniqueTargets = [...new Set(targets)];
-  const whatsappResults = await Promise.all(uniqueTargets.map(target => sendWhatsAppViaTwilio(target, message)));
-  const sent = whatsappResults.some(Boolean);
+  const whatsappResults = await Promise.all(uniqueTargets.map(target => sendWhatsAppNotification(target, message)));
+  const sent = whatsappResults.some(item => item.ok);
+  if (!sent && uniqueTargets.length) {
+    console.warn('No se pudo enviar WhatsApp por Twilio para la reserva', booking?.id || '');
+  }
 
   const emailSent = await sendEmailViaBrevo(booking, emailSubject, message);
   return sent || emailSent;
 }
 
 async function notifyVisitScheduled(booking) {
-  const message = buildVisitScheduledMessage(booking);
+  const message = buildWhatsAppConfirmationMessage(booking) || buildVisitScheduledMessage(booking);
   return notifyBookingChannels(booking, message, isPrisonVisit(booking) ? 'TACAM: visita a la cárcel agendada' : 'Calendario de visitas TACAM: cita agendada');
 }
 
