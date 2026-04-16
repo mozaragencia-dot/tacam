@@ -2187,6 +2187,15 @@ function getTomorrowDateString() {
   return `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, '0')}-${String(tomorrow.getDate()).padStart(2, '0')}`;
 }
 
+function getTomorrowPrisonVisitsForGendarmeria(filterValue = '') {
+  const tomorrow = getTomorrowDateString();
+  return getVisibleBookingsForSession(getBookings())
+    .filter(booking => booking.hiredLawyer && booking.status !== 'cancelada' && isPrisonVisit(booking))
+    .filter(booking => booking.date === tomorrow)
+    .filter(booking => !filterValue || booking.assignedTo === filterValue)
+    .sort((a, b) => `${a.date || ''} ${a.time || ''}`.localeCompare(`${b.date || ''} ${b.time || ''}`, 'es'));
+}
+
 function buildGendarmeriaListMessage(visits) {
   const titleMonth = prisonMonthInput.value || monthValueFromDate(new Date());
   const header = [
@@ -2247,10 +2256,7 @@ function renderGendarmeriaVisitOptions() {
   const role = getCurrentSessionRole();
   const sessionLawyer = getCurrentSessionLawyerName();
   const filterValue = role === 'Abogada' && sessionLawyer ? sessionLawyer : String(prisonLawyerFilter?.value || '').trim();
-  const visits = getFilteredPrisonVisitsForReport()
-    .filter(booking => !filterValue || booking.assignedTo === filterValue)
-    .filter(booking => booking.date === getTomorrowDateString())
-    .sort((a, b) => `${a.date || ''} ${a.time || ''}`.localeCompare(`${b.date || ''} ${b.time || ''}`, 'es'));
+  const visits = getTomorrowPrisonVisitsForGendarmeria(filterValue);
 
   const previousValues = new Set(Array.from(gendarmeriaVisitSelect.selectedOptions || []).map(option => option.value));
   gendarmeriaVisitSelect.replaceChildren();
