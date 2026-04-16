@@ -43,7 +43,7 @@ const lawyerCalendarMonth = document.getElementById('lawyer-calendar-month');
 const lawyerCalendar = document.getElementById('lawyer-calendar');
 const lawyerCalendarLegend = document.getElementById('lawyer-calendar-legend');
 const sharedOnlyInput = document.getElementById('shared-only');
-const generalStatsChart = document.getElementById('general-stats-chart');
+const prisonLawyerRankingCard = document.getElementById('prison-lawyer-ranking');
 const lawyerStatsChart = document.getElementById('lawyer-stats-chart');
 const prisonStatsChart = document.getElementById('prison-stats-chart');
 const lawyerRankingChart = document.getElementById('lawyer-ranking-chart');
@@ -603,6 +603,111 @@ function ensureDefaultLawyerAccessProfiles() {
     changedProfiles = true;
   });
   if (changedProfiles) saveProfiles(profiles);
+}
+
+function syncLawyerAndProfileUsers() {
+  const lawyers = getLawyers();
+  const profiles = getProfiles();
+  let changedLawyers = false;
+  let changedProfiles = false;
+
+  const normalizeEmail = value => String(value || '').trim().toLowerCase();
+  const normalizeUsername = value => String(value || '').trim().toLowerCase();
+  const normalizeName = value => String(value || '').trim().toLowerCase();
+
+  const uniqueProfiles = [];
+  const profileKeyMap = new Map();
+  profiles.forEach(profile => {
+    const keys = [
+      normalizeEmail(profile.email),
+      normalizeUsername(profile.username)
+    ].filter(Boolean);
+    const duplicated = keys.find(key => profileKeyMap.has(key));
+    if (duplicated) {
+      changedProfiles = true;
+      return;
+    }
+    uniqueProfiles.push(profile);
+    keys.forEach(key => profileKeyMap.set(key, profile));
+  });
+
+  const uniqueLawyers = [];
+  const lawyerKeyMap = new Map();
+  lawyers.forEach(lawyer => {
+    const keys = [
+      normalizeEmail(lawyer.email),
+      normalizeName(lawyer.name)
+    ].filter(Boolean);
+    const duplicated = keys.find(key => lawyerKeyMap.has(key));
+    if (duplicated) {
+      changedLawyers = true;
+      return;
+    }
+    uniqueLawyers.push(lawyer);
+    keys.forEach(key => lawyerKeyMap.set(key, lawyer));
+  });
+
+  uniqueLawyers.forEach(lawyer => {
+    const email = normalizeEmail(lawyer.email);
+    const username = email ? email.split('@')[0] : '';
+    const matchedProfile = uniqueProfiles.find(profile =>
+      normalizeEmail(profile.email) === email ||
+      normalizeUsername(profile.username) === username ||
+      normalizeName(profile.name) === normalizeName(lawyer.name)
+    );
+    if (!matchedProfile) return;
+
+    if (email && normalizeEmail(matchedProfile.email) !== email) {
+      matchedProfile.email = email;
+      changedProfiles = true;
+    }
+    if (username && normalizeUsername(matchedProfile.username) !== username) {
+      matchedProfile.username = username;
+      changedProfiles = true;
+    }
+    if ((matchedProfile.role || '') !== 'Abogada') {
+      matchedProfile.role = 'Abogada';
+      changedProfiles = true;
+    }
+    if (lawyer.phone && matchedProfile.phone !== lawyer.phone) {
+      matchedProfile.phone = lawyer.phone;
+      changedProfiles = true;
+    }
+  });
+
+  uniqueProfiles
+    .filter(profile => (profile.role || '').trim() === 'Abogada')
+    .forEach(profile => {
+      const email = normalizeEmail(profile.email);
+      const match = uniqueLawyers.find(lawyer =>
+        normalizeEmail(lawyer.email) === email ||
+        normalizeName(lawyer.name) === normalizeName(profile.name)
+      );
+      if (match) {
+        if (email && normalizeEmail(match.email) !== email) {
+          match.email = email;
+          changedLawyers = true;
+        }
+        if (profile.phone && match.phone !== profile.phone) {
+          match.phone = profile.phone;
+          changedLawyers = true;
+        }
+        return;
+      }
+      uniqueLawyers.unshift({
+        id: crypto.randomUUID(),
+        name: String(profile.name || profile.username || 'Abogada').trim(),
+        specialty: String(profile.specialty || '').trim(),
+        phone: String(profile.phone || '').trim(),
+        email,
+        rut: String(profile.rut || '').trim(),
+        photo: 'assets/logo-color.svg'
+      });
+      changedLawyers = true;
+    });
+
+  if (changedProfiles || uniqueProfiles.length !== profiles.length) saveProfiles(uniqueProfiles);
+  if (changedLawyers || uniqueLawyers.length !== lawyers.length) saveLawyers(uniqueLawyers);
 }
 
 function hasNotificationConsent(booking) {
@@ -1452,6 +1557,64 @@ function getPrisonVisitStats() {
   return [...map.entries()].map(([lawyer, total]) => ({ lawyer, total }));
 }
 
+function getRankingTone(total) {
+  if (total >= 4) return 'high';
+  if (total >= 2) return 'mid';
+  return 'low';
+}
+
+function renderPrisonLawyerRankingCard() {
+  if (!(prisonLawyerRankingCard instanceof HTMLElement)) return;
+  prisonLawyerRankingCard.replaceChildren();
+
+  const ranking = getPrisonVisitStats()
+    .sort((a, b) => b.total - a.total || a.lawyer.localeCompare(b.lawyer, 'es'))
+    .slice(0, 10);
+
+  if (!ranking.length) {
+    const empty = document.createElement('p');
+    empty.className = 'muted';
+    empty.textContent = 'Sin visitas a la cárcel para mostrar ranking.';
+    prisonLawyerRankingCard.appendChild(empty);
+    return;
+  }
+
+  const maxTotal = Math.max(...ranking.map(item => item.total), 1);
+  ranking.forEach((item, index) => {
+    const tone = getRankingTone(item.total);
+    const row = document.createElement('div');
+    row.className = 'ranking-row';
+
+    const position = document.createElement('div');
+    position.className = `ranking-position ${tone === 'low' ? 'low' : ''}`.trim();
+    position.textContent = String(index + 1);
+    row.appendChild(position);
+
+    const main = document.createElement('div');
+    main.className = 'ranking-main';
+    const name = document.createElement('div');
+    name.className = 'ranking-name';
+    name.textContent = item.lawyer;
+    main.appendChild(name);
+
+    const track = document.createElement('div');
+    track.className = 'ranking-track';
+    const fill = document.createElement('div');
+    fill.className = `ranking-fill ${tone}`;
+    fill.style.width = `${(item.total / maxTotal) * 100}%`;
+    track.appendChild(fill);
+    main.appendChild(track);
+    row.appendChild(main);
+
+    const badge = document.createElement('div');
+    badge.className = `ranking-badge ${tone}`;
+    badge.textContent = String(item.total);
+    row.appendChild(badge);
+
+    prisonLawyerRankingCard.appendChild(row);
+  });
+}
+
 function getLawyerRankingStats() {
   return getLawyerAttentionStats()
     .map(item => ({
@@ -1710,15 +1873,12 @@ function restoreBackupPayload(payload) {
   saveBookings(payload.bookings);
   saveLawyers(payload.lawyers);
   saveProfiles(payload.profiles);
+  syncLawyerAndProfileUsers();
   renderAll();
 }
 
 function renderReports() {
-  const general = getGeneralStatusStats();
-  const generalLabels = ['Nueva', 'Confirmada', 'Atendida', 'Cancelada'];
-  const generalValues = [general.nueva, general.confirmada, general.atendida, general.cancelada];
-  const generalColors = ['#f5d3dc', '#ead8fa', '#ceefd8', '#ffd1d1'];
-  drawBarChart(generalStatsChart, generalLabels, generalValues, generalColors, 'Atenciones generales por estado');
+  renderPrisonLawyerRankingCard();
 
   const lawyerStats = getLawyerAttentionStats();
   const lawyerLabels = lawyerStats.map(item => item.lawyer);
@@ -3145,6 +3305,7 @@ lawyerForm.addEventListener('submit', async event => {
     });
   }
   saveProfiles(profiles);
+  syncLawyerAndProfileUsers();
   lawyerForm.reset();
   renderAll();
   playSaveChime();
@@ -3221,6 +3382,7 @@ profileForm.addEventListener('submit', event => {
     }
     saveLawyers(lawyers);
   }
+  syncLawyerAndProfileUsers();
   profileForm.reset();
   renderLawyers();
   renderLawyerCalendar();
@@ -3255,6 +3417,7 @@ updateBookingRepresentativeVisibility();
 updateSyncIndicator('pending', 'Sincronización: pendiente');
 updateChileClock();
 ensureDefaultLawyerAccessProfiles();
+syncLawyerAndProfileUsers();
 
 window.addEventListener('tacam-server-hydrated', () => {
   if (!appShell.hidden) {
