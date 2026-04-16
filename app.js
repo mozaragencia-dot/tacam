@@ -725,13 +725,33 @@ async function sendEmailViaBrevo(booking, subject, message) {
   }
 }
 
+async function sendWhatsAppViaTwilio(phoneRaw, message) {
+  const destination = cleanPhone(phoneRaw);
+  if (!destination) return false;
+
+  try {
+    const response = await fetch('twilio-whatsapp.php', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        toPhone: `+${destination}`,
+        message
+      })
+    });
+    if (!response.ok) {
+      console.warn('Twilio WhatsApp error', await response.text());
+      return false;
+    }
+    return true;
+  } catch (error) {
+    console.warn('Twilio WhatsApp request failed', error);
+    return false;
+  }
+}
+
 async function notifyBooking(booking) {
   if (!hasNotificationConsent(booking)) return false;
-  const destination = cleanPhone(booking.phone);
-  if (!destination) return false;
-  const msg = encodeURIComponent(buildTacamMessage(booking));
-  window.open(`https://wa.me/${destination}?text=${msg}`, '_blank', 'noopener');
-  return true;
+  return sendWhatsAppViaTwilio(booking.phone, buildTacamMessage(booking));
 }
 
 function buildRescheduleMessage(booking, fromDate, toDate) {
@@ -773,14 +793,10 @@ function buildVisitScheduledMessage(booking) {
 async function notifyBookingChannels(booking, message, emailSubject) {
   if (!hasNotificationConsent(booking)) return false;
 
-  const encoded = encodeURIComponent(message);
   const targets = [cleanPhone(booking.phone), getLawyerPhone(booking.assignedTo)].filter(Boolean);
-  let sent = false;
-
-  [...new Set(targets)].forEach(target => {
-    window.open(`https://wa.me/${target}?text=${encoded}`, '_blank', 'noopener');
-    sent = true;
-  });
+  const uniqueTargets = [...new Set(targets)];
+  const whatsappResults = await Promise.all(uniqueTargets.map(target => sendWhatsAppViaTwilio(target, message)));
+  const sent = whatsappResults.some(Boolean);
 
   const emailSent = await sendEmailViaBrevo(booking, emailSubject, message);
   return sent || emailSent;
