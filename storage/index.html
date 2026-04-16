@@ -131,7 +131,7 @@
           <label>Materia
             <select name="matter" required>
               <option value="">Seleccione materia</option>
-              <option value="Familiar">Familiar</option>
+              <option value="Familia">Familia</option>
               <option value="Penal">Penal</option>
               <option value="Policía local">Policía local</option>
             </select>
@@ -341,12 +341,10 @@
 
         <div class="gendarmeria-banner">
           <strong>Envío manual a Gendarmería</strong>
-          <p class="muted">Selecciona una visita agendada y envíala manualmente.</p>
+          <p class="muted">Se listan automáticamente las personas con visita para mañana. Puedes seleccionar una o varias para enviar manualmente.</p>
           <div class="gendarmeria-banner-actions">
-            <label class="full">Visita agendada
-              <select id="gendarmeria-visit-select">
-                <option value="">Seleccione una visita a la cárcel</option>
-              </select>
+            <label class="full">Visitas seleccionables
+              <select id="gendarmeria-visit-select" multiple size="7"></select>
             </label>
             <button id="send-gendarmeria-email" type="button">Enviar a Gendarmería</button>
           </div>

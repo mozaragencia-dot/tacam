@@ -446,6 +446,15 @@ const GENDARMERIA_RECIPIENTS = [
   'Omar.sepulveda@gendarmeria.cl',
   'christian.bravo@gendarmeria.cl'
 ];
+const GENDARMERIA_CC_RECIPIENTS = [
+  'administracion@tacam.cl',
+  'estudiojuridico@tacam.cl',
+  'stapia@tacam.cl',
+  'asistente@tacam.cl',
+  'ccliment@tacam.cl',
+  'vreichert@tacam.cl',
+  'daracena@tacam.cl'
+];
 const DEFAULT_LAWYER_EMAILS = [
   'kserranokserrano@tacam.cl',
   'ccliment@tacam.cl',
@@ -459,6 +468,7 @@ function normalizeMatterLabel(value) {
   if (!clean) return '';
   const normalized = clean.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
   if (normalized.includes('cartel') || normalized.includes('carcel') || normalized.includes('carce')) return PRISON_VISIT_MATTER;
+  if (normalized.includes('familia') || normalized.includes('familiar')) return 'Familia';
   return clean;
 }
 
@@ -728,19 +738,39 @@ async function notifyUpcomingAppointments() {
   }
 }
 
-function moveBookingDate(bookingId, newDate) {
-  if (!newDate) return;
+function promptRescheduleData(booking, suggestedDate) {
+  const dateValue = String(window.prompt('Nueva fecha de la cita (YYYY-MM-DD)', suggestedDate || booking.date || '') || '').trim();
+  if (!dateValue) return null;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateValue)) {
+    showToast('Fecha inválida. Usa formato YYYY-MM-DD.');
+    return null;
+  }
+  const timeValue = String(window.prompt('Nueva hora de la cita (HH:MM)', booking.time || '09:00') || '').trim();
+  if (!timeValue) return null;
+  if (!/^\d{2}:\d{2}$/.test(timeValue)) {
+    showToast('Hora inválida. Usa formato HH:MM.');
+    return null;
+  }
+  return { date: dateValue, time: timeValue };
+}
+
+function moveBookingDate(bookingId, suggestedDate) {
   const bookings = getBookings();
   const booking = bookings.find(item => item.id === bookingId);
-  if (!booking || booking.date === newDate) return;
+  if (!booking) return;
+  const nextData = promptRescheduleData(booking, suggestedDate);
+  if (!nextData) return;
+  if (booking.date === nextData.date && booking.time === nextData.time) return;
 
   const oldDate = booking.date;
-  booking.date = newDate;
+  booking.date = nextData.date;
+  booking.time = nextData.time;
   booking.reminder24hSentAt = '';
   booking.reminder1hSentAt = '';
   saveBookings(bookings);
   renderAll();
-  void notifyReschedule(booking, oldDate, newDate);
+  void notifyReschedule(booking, oldDate, nextData.date);
+  showToast('Cita reprogramada correctamente.');
 }
 
 function updateBooking(bookingId, updater) {
@@ -1991,6 +2021,12 @@ function getFilteredPrisonVisitsForReport() {
     .sort((a, b) => `${a.date || ''} ${a.time || ''}`.localeCompare(`${b.date || ''} ${b.time || ''}`));
 }
 
+function getTomorrowDateString() {
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  return `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, '0')}-${String(tomorrow.getDate()).padStart(2, '0')}`;
+}
+
 function buildGendarmeriaListMessage(visits) {
   const titleMonth = prisonMonthInput.value || monthValueFromDate(new Date());
   const header = [
@@ -2024,7 +2060,7 @@ async function sendGendarmeriaRoster(visits, subject, options = {}) {
       return String(lawyer?.email || '').trim();
     })
     .filter(Boolean))];
-  const allRecipients = [...new Set([...recipients, ...lawyerEmails])];
+  const allRecipients = [...new Set([...recipients, ...GENDARMERIA_CC_RECIPIENTS, ...lawyerEmails])];
   try {
     for (const toEmail of allRecipients) {
       const response = await fetch('brevo-email.php', {
@@ -2053,6 +2089,7 @@ function renderGendarmeriaVisitOptions() {
   const filterValue = role === 'Abogada' && sessionLawyer ? sessionLawyer : String(prisonLawyerFilter?.value || '').trim();
   const visits = getFilteredPrisonVisitsForReport()
     .filter(booking => !filterValue || booking.assignedTo === filterValue)
+    .filter(booking => booking.date === getTomorrowDateString())
     .sort((a, b) => `${a.date || ''} ${a.time || ''}`.localeCompare(`${b.date || ''} ${b.time || ''}`, 'es'));
 
   const previousValues = new Set(Array.from(gendarmeriaVisitSelect.selectedOptions || []).map(option => option.value));
@@ -2066,6 +2103,12 @@ function renderGendarmeriaVisitOptions() {
     if (previousValues.has(booking.id)) option.selected = true;
     gendarmeriaVisitSelect.appendChild(option);
   });
+
+  if (!previousValues.size) {
+    Array.from(gendarmeriaVisitSelect.options).forEach(option => {
+      option.selected = true;
+    });
+  }
 }
 
 function renderPrisonCalendar() {
@@ -2761,7 +2804,7 @@ if (sendGendarmeriaEmailBtn) sendGendarmeriaEmailBtn.addEventListener('click', a
     return;
   }
 
-  if (!window.confirm(`¿Confirmar envío a Gendarmería para ${visits.length} visita(s)?`)) return;
+  if (!window.confirm(`¿Confirmar envío manual a Gendarmería para ${visits.length} visita(s) de mañana?`)) return;
 
   const subject = `TACAM: Nómina visita a la cárcel ${visits[0]?.date || ''}`.trim();
   try {
