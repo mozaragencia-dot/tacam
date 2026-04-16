@@ -456,7 +456,9 @@ const GENDARMERIA_CC_RECIPIENTS = [
   'daracena@tacam.cl'
 ];
 const DEFAULT_LAWYER_EMAILS = [
-  'kserranokserrano@tacam.cl',
+  'administracion@tacam.cl',
+  'estudiojuridico@tacam.cl',
+  'asistente@tacam.cl',
   'ccliment@tacam.cl',
   'vreichert@tacam.cl',
   'stapia@tacam.cl',
@@ -563,34 +565,26 @@ function getVisibleBookingsForSession(bookings = getBookings()) {
 
 function ensureDefaultLawyerAccessProfiles() {
   const profiles = getProfiles();
-  let changedProfiles = false;
-  DEFAULT_LAWYER_EMAILS.forEach(email => {
-    const cleanEmail = email.toLowerCase();
+  const normalized = DEFAULT_LAWYER_EMAILS.map(email => email.toLowerCase());
+  const refreshedProfiles = normalized.map(cleanEmail => {
     const username = cleanEmail.split('@')[0];
     const existing = profiles.find(profile =>
-      (String(profile.email || '').trim().toLowerCase() === cleanEmail) ||
-      (String(profile.username || '').trim().toLowerCase() === username)
+      String(profile.email || '').trim().toLowerCase() === cleanEmail
+      || String(profile.username || '').trim().toLowerCase() === username
     );
-    if (existing) {
-      if (!existing.email) existing.email = cleanEmail;
-      if (!existing.username) existing.username = username;
-      if (!existing.password) existing.password = 'tacam123';
-      if (!existing.role) existing.role = 'Abogada';
-      changedProfiles = true;
-      return;
-    }
-    profiles.unshift({
-      id: crypto.randomUUID(),
-      name: username.toUpperCase(),
+    return {
+      id: existing?.id || crypto.randomUUID(),
+      name: String(existing?.name || username.toUpperCase()).trim(),
       username,
       password: 'tacam123',
       role: 'Abogada',
       email: cleanEmail,
+      phone: String(existing?.phone || '').trim(),
+      specialty: String(existing?.specialty || '').trim(),
       permissions: ['Visitas', 'Imputados', 'Editar contactos']
-    });
-    changedProfiles = true;
+    };
   });
-  if (changedProfiles) saveProfiles(profiles);
+  saveProfiles(refreshedProfiles);
 }
 
 function syncLawyerAndProfileUsers() {
