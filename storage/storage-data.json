@@ -1,0 +1,827 @@
+{
+    "clients": [
+        {
+            "id": "55db6f1c-b1ac-4b1d-bb7b-530d7b942605",
+            "name": "Richard",
+            "rut": "12.312.312-2",
+            "phone": "+56912312312",
+            "email": "kepa.vejar@gmail.com",
+            "address": "Chumil 01622 Block Depto. Villa/Pob.",
+            "inPrison": false,
+            "prisonModule": "",
+            "imputadoStatus": "imputado",
+            "imputadoModule": "",
+            "representative": {
+                "name": "Johan",
+                "rut": "17.892.321-3",
+                "phone": "+56930962782",
+                "email": "kepa.vejar@gmail.com",
+                "address": "Salar grande 121",
+                "represents": "Richard"
+            },
+            "createdAt": "2026-04-14T16:57:14.044Z"
+        },
+        {
+            "id": "947c408e-34da-4bac-b80e-b0d06dcb6955",
+            "name": "Kevin Paredes",
+            "rut": "17.892.246-7",
+            "phone": "+56930972892",
+            "email": "kepa.vejar@gmail.com",
+            "address": "Salar grande 121",
+            "inPrison": false,
+            "prisonModule": "",
+            "imputadoStatus": "imputado",
+            "imputadoModule": "",
+            "representative": {
+                "name": "Kevin",
+                "rut": "",
+                "phone": "+56930962782",
+                "email": "kepa.vejar@gmail.com",
+                "address": "Salar grande 121",
+                "represents": "Kevin Paredes"
+            },
+            "createdAt": "2026-04-14T16:56:10.114Z"
+        },
+        {
+            "id": "da59698c-216c-4a7e-8f9d-403167d3f71a",
+            "name": "Carlos Cortes",
+            "rut": "11.111.111-1",
+            "phone": "+56999999999",
+            "email": "kepa.vejar@gmail.com",
+            "address": "Salar grande 121",
+            "inPrison": true,
+            "prisonModule": "12",
+            "imputadoStatus": "imputado",
+            "imputadoModule": "12",
+            "representative": {
+                "name": "Kevin",
+                "rut": "17.892.323-1",
+                "phone": "+56930981232",
+                "email": "asdasd@asda.cl",
+                "address": "Baquedano 50 oficina 709",
+                "represents": "Carlos Cortes"
+            },
+            "createdAt": "2026-04-14T16:40:06.352Z"
+        },
+        {
+            "id": "4a09d4ad-5f1d-48ba-b4b9-5ce7428ec111",
+            "name": "Kevin Paredes",
+            "rut": "17.892.246-7",
+            "phone": "+56930962782",
+            "email": "administracion@tacam.cl",
+            "address": "Salar grande 121",
+            "inPrison": true,
+            "prisonModule": "",
+            "imputadoStatus": "imputado",
+            "imputadoModule": "",
+            "representative": {
+                "name": "Mauricio",
+                "lastName": "Mauro Tapia",
+                "rut": "17.891.221-3",
+                "phone": "+56930962782",
+                "email": "kepa.vejar@gmail.com",
+                "modulo": "",
+                "address": "Salar grande 121",
+                "represents": "Kevin Paredes"
+            },
+            "assignedTo": "",
+            "createdByLawyer": "",
+            "createdAt": "2026-04-15T01:05:57.557Z",
+            "updatedAt": "2026-04-15T01:05:57.557Z"
+        },
+        {
+            "id": "da10b812-98d3-44d8-b106-d16c65b50972",
+            "name": "Cliente Demo",
+            "rut": "12.345.678-9",
+            "phone": "+56911111111",
+            "email": "cliente.demo@tacam.cl",
+            "address": "Dirección demo",
+            "imputadoStatus": "no_imputado",
+            "representative": null,
+            "createdAt": "2026-04-13T22:26:42.592Z",
+            "updatedAt": "2026-04-15T01:05:57.557Z"
+        }
+    ],
+    "bookings": [
+        {
+            "id": "ac7f3e0e-4cf1-4eb5-8026-65673ac40206",
+            "clientId": "947c408e-34da-4bac-b80e-b0d06dcb6955",
+            "customer": "Kevin Paredes",
+            "rut": "17.892.246-7",
+            "phone": "+56930972892",
+            "email": "kepa.vejar@gmail.com",
+            "address": "Salar grande 121",
+            "inPrison": false,
+            "prisonModule": "",
+            "imputadoStatus": "imputado",
+            "representative": {
+                "name": "Kevin",
+                "rut": "",
+                "phone": "+56930962782",
+                "email": "kepa.vejar@gmail.com",
+                "address": "Salar grande 121",
+                "represents": "Kevin Paredes"
+            },
+            "matter": "Penal",
+            "date": "2026-04-14",
+            "time": "18:14",
+            "assignedTo": "DIANDRA ARACENA MORA",
+            "hiredLawyer": true,
+            "notes": "",
+            "notificationsConsent": false,
+            "consentAt": "",
+            "prisonAttendance": "",
+            "status": "confirmada",
+            "createdAt": "2026-04-14T17:15:03.224Z",
+            "reminder24hSentAt": "",
+            "reminder1hSentAt": "",
+            "checkedInAt": "",
+            "updatedAt": "2026-04-14T17:15:03.224Z"
+        },
+        {
+            "id": "7937962e-924e-49ae-bee0-52cbe568c209",
+            "clientId": "947c408e-34da-4bac-b80e-b0d06dcb6955",
+            "customer": "Kevin Paredes",
+            "rut": "17.892.246-7",
+            "phone": "+56930972892",
+            "email": "kepa.vejar@gmail.com",
+            "address": "Salar grande 121",
+            "inPrison": false,
+            "prisonModule": "",
+            "imputadoStatus": "imputado",
+            "representative": {
+                "name": "Kevin",
+                "rut": "",
+                "phone": "+56930962782",
+                "email": "kepa.vejar@gmail.com",
+                "address": "Salar grande 121",
+                "represents": "Kevin Paredes"
+            },
+            "matter": "Penal",
+            "date": "2026-04-14",
+            "time": "17:11",
+            "assignedTo": "",
+            "hiredLawyer": false,
+            "notes": "",
+            "notificationsConsent": false,
+            "consentAt": "",
+            "prisonAttendance": "",
+            "status": "nueva",
+            "createdAt": "2026-04-14T17:11:20.408Z",
+            "reminder24hSentAt": "",
+            "reminder1hSentAt": "",
+            "checkedInAt": "",
+            "updatedAt": "2026-04-14T17:11:20.408Z"
+        },
+        {
+            "id": "a51791f4-ce71-416b-adac-aebff4986004",
+            "clientId": "947c408e-34da-4bac-b80e-b0d06dcb6955",
+            "customer": "Kevin Paredes",
+            "rut": "17.892.246-7",
+            "phone": "+56930972892",
+            "email": "kepa.vejar@gmail.com",
+            "address": "Salar grande 121",
+            "inPrison": false,
+            "prisonModule": "",
+            "imputadoStatus": "imputado",
+            "representative": {
+                "name": "Richard",
+                "rut": "",
+                "phone": "+56930962782",
+                "email": "kepa.vejar@gmail.com",
+                "address": "Salar grande 121",
+                "represents": "Kevin Paredes"
+            },
+            "matter": "Penal",
+            "date": "2026-04-14",
+            "time": "17:07",
+            "assignedTo": "",
+            "hiredLawyer": false,
+            "notes": "asdasd",
+            "notificationsConsent": true,
+            "consentAt": "2026-04-14T17:01:52.450Z",
+            "prisonAttendance": "",
+            "status": "nueva",
+            "createdAt": "2026-04-14T17:01:52.450Z",
+            "reminder24hSentAt": "2026-04-14T17:01:56.320Z",
+            "reminder1hSentAt": "",
+            "checkedInAt": "",
+            "updatedAt": "2026-04-14T17:01:52.450Z"
+        },
+        {
+            "id": "f6acfaba-4595-4e42-aa9e-fdd39a15ed6d",
+            "clientId": "da59698c-216c-4a7e-8f9d-403167d3f71a",
+            "customer": "Carlos Cortes",
+            "rut": "11.111.111-1",
+            "phone": "+56999999999",
+            "email": "kepa.vejar@gmail.com",
+            "address": "Salar grande 121",
+            "matter": "Visita a la Cárcel",
+            "prisonModule": "12",
+            "inPrison": true,
+            "date": "2026-04-14",
+            "time": "12:40",
+            "assignedTo": "DIANDRA ARACENA MORA",
+            "hiredLawyer": true,
+            "notes": "asdasdsad",
+            "notificationsConsent": true,
+            "consentAt": "2026-04-14T16:40:34.402Z",
+            "prisonAttendance": "",
+            "status": "confirmada",
+            "createdAt": "2026-04-14T16:40:34.402Z",
+            "reminder24hSentAt": "",
+            "reminder1hSentAt": "",
+            "checkedInAt": "",
+            "imputadoStatus": "no_imputado",
+            "representative": null,
+            "updatedAt": "2026-04-14T16:40:34.402Z"
+        },
+        {
+            "id": "5f9573e7-b8ae-4ce1-905e-84891321035c",
+            "clientId": "da10b812-98d3-44d8-b106-d16c65b50972",
+            "customer": "Cliente Demo",
+            "rut": "12.345.678-9",
+            "phone": "+56911111111",
+            "email": "cliente.demo@tacam.cl",
+            "address": "Dirección demo",
+            "matter": "Visita a la Cárcel",
+            "prisonModule": "",
+            "inPrison": true,
+            "date": "2026-04-16",
+            "time": "17:20",
+            "assignedTo": "SARA BERNARDA TAPIA GONZÁLEZ",
+            "hiredLawyer": true,
+            "notes": "prueba 3",
+            "notificationsConsent": true,
+            "consentAt": "2026-04-15T01:17:19.559Z",
+            "prisonAttendance": "",
+            "status": "confirmada",
+            "createdAt": "2026-04-15T01:17:19.559Z",
+            "updatedAt": "2026-04-15T01:17:19.559Z",
+            "reminder24hSentAt": "",
+            "reminder1hSentAt": "",
+            "checkedInAt": ""
+        },
+        {
+            "id": "40df063d-fed5-41a1-ad38-d90ceb4bf3e3",
+            "clientId": "4a09d4ad-5f1d-48ba-b4b9-5ce7428ec111",
+            "customer": "Kevin Paredes",
+            "rut": "17.892.246-7",
+            "phone": "+56930962782",
+            "email": "administracion@tacam.cl",
+            "address": "Salar grande 121",
+            "matter": "Visita a la Cárcel",
+            "prisonModule": "",
+            "inPrison": true,
+            "date": "2026-04-16",
+            "time": "23:18",
+            "assignedTo": "SARA BERNARDA TAPIA GONZÁLEZ",
+            "hiredLawyer": true,
+            "notes": "prueba 2",
+            "notificationsConsent": true,
+            "consentAt": "2026-04-15T01:16:43.440Z",
+            "prisonAttendance": "",
+            "status": "confirmada",
+            "createdAt": "2026-04-15T01:16:43.440Z",
+            "updatedAt": "2026-04-15T01:16:43.440Z",
+            "reminder24hSentAt": "",
+            "reminder1hSentAt": "",
+            "checkedInAt": ""
+        },
+        {
+            "id": "ca98a052-4174-4514-b8fc-8b3c08791a5e",
+            "clientId": "4a09d4ad-5f1d-48ba-b4b9-5ce7428ec111",
+            "customer": "Kevin Paredes",
+            "rut": "17.892.246-7",
+            "phone": "+56930962782",
+            "email": "administracion@tacam.cl",
+            "address": "Salar grande 121",
+            "matter": "Visita a la Cárcel",
+            "prisonModule": "",
+            "inPrison": true,
+            "date": "2026-04-15",
+            "time": "14:15",
+            "assignedTo": "SARA BERNARDA TAPIA GONZÁLEZ",
+            "hiredLawyer": true,
+            "notes": "prueba 1",
+            "notificationsConsent": true,
+            "consentAt": "2026-04-15T01:15:35.308Z",
+            "prisonAttendance": "asistio",
+            "status": "atendida",
+            "createdAt": "2026-04-15T01:15:35.308Z",
+            "updatedAt": "2026-04-15T01:15:35.308Z",
+            "reminder24hSentAt": "2026-04-15T01:15:36.670Z",
+            "reminder1hSentAt": "",
+            "checkedInAt": ""
+        },
+        {
+            "id": "2bbe0d7c-5716-442c-906b-fdef78f93690",
+            "clientId": "4a09d4ad-5f1d-48ba-b4b9-5ce7428ec111",
+            "customer": "Kevin Paredes",
+            "rut": "17.892.246-7",
+            "phone": "+56930962782",
+            "email": "administracion@tacam.cl",
+            "address": "Salar grande 121",
+            "inPrison": true,
+            "prisonModule": "",
+            "imputadoStatus": "imputado",
+            "representative": {
+                "name": "Mauricio",
+                "lastName": "Mauro Tapia",
+                "rut": "17.891.221-3",
+                "phone": "+56930962782",
+                "email": "kepa.vejar@gmail.com",
+                "modulo": "",
+                "address": "Salar grande 121",
+                "represents": "Kevin Paredes"
+            },
+            "matter": "Penal",
+            "date": "2026-04-16",
+            "time": "21:09",
+            "assignedTo": "SARA BERNARDA TAPIA GONZÁLEZ",
+            "hiredLawyer": false,
+            "notes": "qweqwwqew",
+            "notificationsConsent": true,
+            "consentAt": "2026-04-15T01:09:47.155Z",
+            "prisonAttendance": "",
+            "status": "nueva",
+            "createdAt": "2026-04-15T01:09:47.155Z",
+            "updatedAt": "2026-04-15T01:09:47.155Z",
+            "reminder24hSentAt": "",
+            "reminder1hSentAt": "",
+            "checkedInAt": ""
+        },
+        {
+            "id": "23103af3-58a9-4d32-b3bc-840dff35d36e",
+            "clientId": "da10b812-98d3-44d8-b106-d16c65b50972",
+            "customer": "Cliente Demo",
+            "rut": "12.345.678-9",
+            "phone": "+56911111111",
+            "email": "cliente.demo@tacam.cl",
+            "address": "Dirección demo",
+            "imputadoStatus": "no_imputado",
+            "representative": null,
+            "matter": "Familiar",
+            "date": "2026-04-13",
+            "time": "10:30",
+            "assignedTo": "KATHERINE SERRANO MARREY",
+            "hiredLawyer": true,
+            "notes": "Consulta por materia familiar.",
+            "status": "nueva",
+            "createdAt": "2026-04-13T22:26:42.592Z",
+            "updatedAt": "2026-04-15T01:09:47.155Z"
+        }
+    ],
+    "lawyers": [
+        {
+            "id": "c2da782c-09af-4ec9-a752-bd95810e37a7",
+            "name": "KATHERINE SERRANO MARREY",
+            "rut": "16.592.789-3",
+            "specialty": "Penal - policía local",
+            "email": "kserrano@tacam.cl",
+            "phone": "",
+            "photo": "assets/logo-color.svg"
+        },
+        {
+            "id": "ada9f399-b1aa-469c-bbde-a4910eff4606",
+            "name": "CONSTANZA ROCÍO CLIMENT DEL RÍO",
+            "rut": "16.380.148-5",
+            "specialty": "Familia",
+            "email": "ccliment@tacam.cl",
+            "phone": "",
+            "photo": "assets/logo-color.svg"
+        },
+        {
+            "id": "64483aab-fc73-45c6-a35b-653de87f182e",
+            "name": "VALENTINA BELEN REICHERT GODOY",
+            "rut": "20.135.049-2",
+            "specialty": "Penal - Policía local",
+            "email": "vreichert@tacam.cl",
+            "phone": "",
+            "photo": "assets/logo-color.svg"
+        },
+        {
+            "id": "928765c6-ab8a-448f-991e-2583331acaab",
+            "name": "SARA BERNARDA TAPIA GONZÁLEZ",
+            "rut": "12.836.725-K",
+            "specialty": "Penal - Policía local - Familia",
+            "email": "stapia@tacam.cl",
+            "phone": "",
+            "photo": "assets/logo-color.svg"
+        },
+        {
+            "id": "a55b2928-341e-4799-82be-a64b17c64bee",
+            "name": "DIANDRA ARACENA MORA",
+            "rut": "15.981.484-K",
+            "specialty": "Penal",
+            "email": "daracena@tacam.cl",
+            "phone": "",
+            "photo": "assets/logo-color.svg"
+        }
+    ],
+    "profiles": [
+        {
+            "id": "3c204329-affb-4b41-a8fd-f2d0cdf75f66",
+            "name": "DARACENA",
+            "username": "daracena",
+            "password": "tacam123",
+            "role": "Abogada",
+            "email": "daracena@tacam.cl",
+            "permissions": [
+                "Visitas",
+                "Imputados",
+                "Editar contactos"
+            ]
+        },
+        {
+            "id": "b11e796f-a67d-425f-8ca0-ab877a08a9f4",
+            "name": "STAPIA",
+            "username": "stapia",
+            "password": "tacam123",
+            "role": "Abogada",
+            "email": "stapia@tacam.cl",
+            "permissions": [
+                "Visitas",
+                "Imputados",
+                "Editar contactos"
+            ]
+        },
+        {
+            "id": "3e4e9379-eb66-4b93-9d4f-31a45685ea84",
+            "name": "VREICHERT",
+            "username": "vreichert",
+            "password": "tacam123",
+            "role": "Abogada",
+            "email": "vreichert@tacam.cl",
+            "permissions": [
+                "Visitas",
+                "Imputados",
+                "Editar contactos"
+            ]
+        },
+        {
+            "id": "fbc5b8c8-6b70-4df5-bfca-f498f89c65bc",
+            "name": "CCLIMENT",
+            "username": "ccliment",
+            "password": "tacam123",
+            "role": "Abogada",
+            "email": "ccliment@tacam.cl",
+            "permissions": [
+                "Visitas",
+                "Imputados",
+                "Editar contactos"
+            ]
+        },
+        {
+            "id": "c0bc1ca7-8c83-4bf8-b7d2-4450af527262",
+            "name": "KSERRANOKSERRANO",
+            "username": "kserranokserrano",
+            "password": "tacam123",
+            "role": "Abogada",
+            "email": "kserranokserrano@tacam.cl",
+            "permissions": [
+                "Visitas",
+                "Imputados",
+                "Editar contactos"
+            ]
+        },
+        {
+            "id": "9f8ebab3-7ef5-4aa8-81f7-2dc1d84324fe",
+            "name": "DARACENA",
+            "username": "daracena",
+            "password": "tacam123",
+            "role": "Abogada",
+            "email": "daracena@tacam.cl",
+            "permissions": [
+                "Visitas",
+                "Imputados",
+                "Editar contactos"
+            ]
+        },
+        {
+            "id": "c565d88c-bde6-4483-8e95-51c6bba9e29c",
+            "name": "STAPIA",
+            "username": "stapia",
+            "password": "tacam123",
+            "role": "Abogada",
+            "email": "stapia@tacam.cl",
+            "permissions": [
+                "Visitas",
+                "Imputados",
+                "Editar contactos"
+            ]
+        },
+        {
+            "id": "8247f43e-5c0b-4622-a75f-759446ff6389",
+            "name": "VREICHERT",
+            "username": "vreichert",
+            "password": "tacam123",
+            "role": "Abogada",
+            "email": "vreichert@tacam.cl",
+            "permissions": [
+                "Visitas",
+                "Imputados",
+                "Editar contactos"
+            ]
+        },
+        {
+            "id": "78617d0d-ac43-4989-a3ab-0f5a91dc099b",
+            "name": "CCLIMENT",
+            "username": "ccliment",
+            "password": "tacam123",
+            "role": "Abogada",
+            "email": "ccliment@tacam.cl",
+            "permissions": [
+                "Visitas",
+                "Imputados",
+                "Editar contactos"
+            ]
+        },
+        {
+            "id": "2df3be74-6fec-4fdf-a942-6a67141df687",
+            "name": "KSERRANOKSERRANO",
+            "username": "kserranokserrano",
+            "password": "tacam123",
+            "role": "Abogada",
+            "email": "kserranokserrano@tacam.cl",
+            "permissions": [
+                "Visitas",
+                "Imputados",
+                "Editar contactos"
+            ]
+        },
+        {
+            "id": "56a792a3-3fd3-4d26-a6e0-1860d4baa2d7",
+            "name": "DARACENA",
+            "username": "daracena",
+            "password": "tacam123",
+            "role": "Abogada",
+            "email": "daracena@tacam.cl",
+            "permissions": [
+                "Visitas",
+                "Imputados",
+                "Editar contactos"
+            ]
+        },
+        {
+            "id": "d72d7570-2ff3-46fe-9fb6-5cae6990a5ff",
+            "name": "STAPIA",
+            "username": "stapia",
+            "password": "tacam123",
+            "role": "Abogada",
+            "email": "stapia@tacam.cl",
+            "permissions": [
+                "Visitas",
+                "Imputados",
+                "Editar contactos"
+            ]
+        },
+        {
+            "id": "e6dfb3de-4f23-4a42-be12-c214465e29f1",
+            "name": "VREICHERT",
+            "username": "vreichert",
+            "password": "tacam123",
+            "role": "Abogada",
+            "email": "vreichert@tacam.cl",
+            "permissions": [
+                "Visitas",
+                "Imputados",
+                "Editar contactos"
+            ]
+        },
+        {
+            "id": "c40122e1-877b-48f3-bdbd-97c0387543ba",
+            "name": "CCLIMENT",
+            "username": "ccliment",
+            "password": "tacam123",
+            "role": "Abogada",
+            "email": "ccliment@tacam.cl",
+            "permissions": [
+                "Visitas",
+                "Imputados",
+                "Editar contactos"
+            ]
+        },
+        {
+            "id": "c3b3c0f1-3f00-41a9-8e7a-65a8e7b9fc5e",
+            "name": "KSERRANOKSERRANO",
+            "username": "kserranokserrano",
+            "password": "tacam123",
+            "role": "Abogada",
+            "email": "kserranokserrano@tacam.cl",
+            "permissions": [
+                "Visitas",
+                "Imputados",
+                "Editar contactos"
+            ]
+        },
+        {
+            "id": "eb72654a-653f-4290-9607-85caf5ce44e0",
+            "name": "DARACENA",
+            "username": "daracena",
+            "password": "tacam123",
+            "role": "Abogada",
+            "email": "daracena@tacam.cl",
+            "permissions": [
+                "Visitas",
+                "Imputados",
+                "Editar contactos"
+            ]
+        },
+        {
+            "id": "aa77e17f-0840-4ce8-873e-ae239176dce8",
+            "name": "STAPIA",
+            "username": "stapia",
+            "password": "tacam123",
+            "role": "Abogada",
+            "email": "stapia@tacam.cl",
+            "permissions": [
+                "Visitas",
+                "Imputados",
+                "Editar contactos"
+            ]
+        },
+        {
+            "id": "a112ff5c-672e-455e-9f1c-dd50faa08087",
+            "name": "VREICHERT",
+            "username": "vreichert",
+            "password": "tacam123",
+            "role": "Abogada",
+            "email": "vreichert@tacam.cl",
+            "permissions": [
+                "Visitas",
+                "Imputados",
+                "Editar contactos"
+            ]
+        },
+        {
+            "id": "8a7b2988-a800-435e-84a7-f2f4ad982c1e",
+            "name": "CCLIMENT",
+            "username": "ccliment",
+            "password": "tacam123",
+            "role": "Abogada",
+            "email": "ccliment@tacam.cl",
+            "permissions": [
+                "Visitas",
+                "Imputados",
+                "Editar contactos"
+            ]
+        },
+        {
+            "id": "70daa21e-1d05-4096-a947-ee442165507e",
+            "name": "KSERRANOKSERRANO",
+            "username": "kserranokserrano",
+            "password": "tacam123",
+            "role": "Abogada",
+            "email": "kserranokserrano@tacam.cl",
+            "permissions": [
+                "Visitas",
+                "Imputados",
+                "Editar contactos"
+            ]
+        },
+        {
+            "id": "5a0a436d-ee9c-4021-924f-9d86c46c9110",
+            "name": "DARACENA",
+            "username": "daracena",
+            "password": "tacam123",
+            "role": "Abogada",
+            "email": "daracena@tacam.cl",
+            "permissions": [
+                "Visitas",
+                "Imputados",
+                "Editar contactos"
+            ]
+        },
+        {
+            "id": "97f923d4-8854-42f9-b744-00721a1ea2c7",
+            "name": "STAPIA",
+            "username": "stapia",
+            "password": "tacam123",
+            "role": "Abogada",
+            "email": "stapia@tacam.cl",
+            "permissions": [
+                "Visitas",
+                "Imputados",
+                "Editar contactos"
+            ]
+        },
+        {
+            "id": "bfd75b48-18c3-4ae9-ab46-79913dc33977",
+            "name": "VREICHERT",
+            "username": "vreichert",
+            "password": "tacam123",
+            "role": "Abogada",
+            "email": "vreichert@tacam.cl",
+            "permissions": [
+                "Visitas",
+                "Imputados",
+                "Editar contactos"
+            ]
+        },
+        {
+            "id": "cdac84cf-ba83-4352-83af-15cfbd0f0786",
+            "name": "CCLIMENT",
+            "username": "ccliment",
+            "password": "tacam123",
+            "role": "Abogada",
+            "email": "ccliment@tacam.cl",
+            "permissions": [
+                "Visitas",
+                "Imputados",
+                "Editar contactos"
+            ]
+        },
+        {
+            "id": "609389c1-9729-4f4c-ac92-9c688c49c320",
+            "name": "KSERRANOKSERRANO",
+            "username": "kserranokserrano",
+            "password": "tacam123",
+            "role": "Abogada",
+            "email": "kserranokserrano@tacam.cl",
+            "permissions": [
+                "Visitas",
+                "Imputados",
+                "Editar contactos"
+            ]
+        },
+        {
+            "id": "9dedf9d8-f008-4e5d-a7d3-0b0158bbea55",
+            "name": "DARACENA",
+            "username": "daracena",
+            "password": "tacam123",
+            "role": "Abogada",
+            "email": "daracena@tacam.cl",
+            "permissions": [
+                "Visitas",
+                "Imputados",
+                "Editar contactos"
+            ]
+        },
+        {
+            "id": "2c17e26d-aa27-429a-a2d9-c995b8bcfcf6",
+            "name": "STAPIA",
+            "username": "stapia",
+            "password": "tacam123",
+            "role": "Abogada",
+            "email": "stapia@tacam.cl",
+            "permissions": [
+                "Visitas",
+                "Imputados",
+                "Editar contactos"
+            ]
+        },
+        {
+            "id": "61df44eb-4688-44e9-a429-7d92a008149a",
+            "name": "VREICHERT",
+            "username": "vreichert",
+            "password": "tacam123",
+            "role": "Abogada",
+            "email": "vreichert@tacam.cl",
+            "permissions": [
+                "Visitas",
+                "Imputados",
+                "Editar contactos"
+            ]
+        },
+        {
+            "id": "4566ee62-421d-4d09-b62b-4781bf82f2cf",
+            "name": "CCLIMENT",
+            "username": "ccliment",
+            "password": "tacam123",
+            "role": "Abogada",
+            "email": "ccliment@tacam.cl",
+            "permissions": [
+                "Visitas",
+                "Imputados",
+                "Editar contactos"
+            ]
+        },
+        {
+            "id": "41f0c125-6121-476b-af3f-9715e5f06a9e",
+            "name": "KSERRANOKSERRANO",
+            "username": "kserranokserrano",
+            "password": "tacam123",
+            "role": "Abogada",
+            "email": "kserranokserrano@tacam.cl",
+            "permissions": [
+                "Visitas",
+                "Imputados",
+                "Editar contactos"
+            ]
+        },
+        {
+            "id": "452b4e3f-e0c3-4c2b-af4c-fbd8c0efc816",
+            "name": "Administrador TACAM",
+            "username": "admin",
+            "role": "Admin",
+            "permissions": [
+                "Reservas",
+                "Agenda",
+                "Abogadas",
+                "Estadísticas"
+            ]
+        }
+    ],
+    "updatedAt": "2026-04-15T15:44:59+00:00"
+}
