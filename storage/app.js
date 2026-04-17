@@ -111,6 +111,8 @@ const assignedToSelect = bookingForm.elements.assignedTo;
 const moduleTabs = document.querySelectorAll('[data-module-tab]');
 const modulePanels = document.querySelectorAll('[data-module-panel]');
 const toast = document.getElementById('toast');
+const savePopup = document.getElementById('save-popup');
+const savePopupMessage = document.getElementById('save-popup-message');
 const syncIndicator = document.getElementById('sync-indicator');
 const clientsShowMoreBtn = document.getElementById('clients-show-more');
 const CLIENTS_PAGE_SIZE = 10;
@@ -123,6 +125,7 @@ const APP_CONFIG = {
   ).trim()
 };
 let toastTimer = null;
+let savePopupTimer = null;
 let clientsVisibleLimit = CLIENTS_PAGE_SIZE;
 
 function switchModule(moduleName) {
@@ -135,6 +138,23 @@ function switchModule(moduleName) {
   });
 }
 
+function shouldShowSavePopup(message) {
+  const normalized = String(message || '').toLowerCase();
+  if (!normalized) return false;
+  if (normalized.includes('error') || normalized.includes('no se pudo') || normalized.includes('inválid')) return false;
+  return ['guardad', 'actualizad', 'enviad', 'agendad', 'borrad', 'confirmad'].some(token => normalized.includes(token));
+}
+
+function showSavePopup(message) {
+  if (!savePopup || !savePopupMessage) return;
+  savePopupMessage.textContent = String(message || 'Datos guardados correctamente.');
+  savePopup.hidden = false;
+  if (savePopupTimer) clearTimeout(savePopupTimer);
+  savePopupTimer = setTimeout(() => {
+    savePopup.hidden = true;
+  }, 1700);
+}
+
 function showToast(message) {
   if (!toast) return;
   toast.textContent = String(message || 'Acción realizada');
@@ -143,6 +163,7 @@ function showToast(message) {
   toastTimer = setTimeout(() => {
     toast.hidden = true;
   }, 2400);
+  if (shouldShowSavePopup(message)) showSavePopup(message);
 }
 
 function playSaveChime() {
@@ -3508,6 +3529,11 @@ updateSyncIndicator('pending', 'Sincronización: pendiente');
 updateChileClock();
 ensureDefaultLawyerAccessProfiles();
 syncLawyerAndProfileUsers();
+if (savePopup) {
+  savePopup.addEventListener('click', () => {
+    savePopup.hidden = true;
+  });
+}
 
 window.addEventListener('tacam-server-hydrated', () => {
   if (!appShell.hidden) {
