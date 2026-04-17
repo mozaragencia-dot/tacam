@@ -185,6 +185,7 @@ function playSaveChime() {
   } catch (error) {
     // ignore audio limitations on some browsers/environments
   }
+  showSavePopup('✅ Datos guardados correctamente. Presiona OK para continuar.');
 }
 
 function updateSyncIndicator(status = 'pending', message = 'Sincronización: pendiente', at = '') {
