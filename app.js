@@ -1085,6 +1085,102 @@ function formatPhone(value) {
   return `+56${digits}`;
 }
 
+function normalizePrisonSheetTokens(value) {
+  return String(value || '')
+    .split(' - ')
+    .map(token => String(token || '').replace(/\s+/g, ' ').trim())
+    .filter(Boolean);
+}
+
+function normalizePrisonSheetRut(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+  const formatted = formatRut(raw);
+  return isValidRut(formatted) ? formatted : raw;
+}
+
+function importPrisonClientsFromSpreadsheetRows(rows) {
+  if (!Array.isArray(rows) || !rows.length) {
+    showToast('No hay filas para importar.');
+    return { imported: 0, updated: 0, skipped: 0 };
+  }
+
+  const clients = getClients();
+  const byRut = new Map(clients.map(client => [String(client.rut || '').trim().toLowerCase(), client]).filter(([key]) => key));
+  const byName = new Map(clients.map(client => [String(client.name || '').trim().toLowerCase(), client]).filter(([key]) => key));
+
+  let imported = 0;
+  let updated = 0;
+  let skipped = 0;
+
+  rows.forEach(row => {
+    if (!row || typeof row !== 'object') return;
+    const indexRaw = row['CLIENTES PRIVADOS DE LIBERTAD '];
+    const isDataRow = Number.isFinite(Number(indexRaw));
+    if (!isDataRow) return;
+
+    const names = normalizePrisonSheetTokens(row['Unnamed: 1']);
+    const ruts = normalizePrisonSheetTokens(row['Unnamed: 2']).map(normalizePrisonSheetRut);
+    const moduleText = String(row['Unnamed: 3'] || '').trim();
+
+    if (!names.length) {
+      skipped += 1;
+      return;
+    }
+
+    names.forEach((name, idx) => {
+      const rut = ruts[idx] || '';
+      const rutKey = rut.toLowerCase();
+      const nameKey = name.toLowerCase();
+      const existing = (rutKey && byRut.get(rutKey)) || byName.get(nameKey) || null;
+
+      if (existing) {
+        existing.name = name;
+        if (rut) {
+          existing.rut = rut;
+          byRut.set(rutKey, existing);
+        }
+        existing.inPrison = true;
+        existing.imputadoStatus = 'imputado';
+        existing.imputadoModule = moduleText || existing.imputadoModule || existing.prisonModule || '';
+        existing.prisonModule = moduleText || existing.prisonModule || existing.imputadoModule || '';
+        existing.updatedAt = new Date().toISOString();
+        byName.set(nameKey, existing);
+        updated += 1;
+        return;
+      }
+
+      const created = {
+        id: crypto.randomUUID(),
+        name,
+        rut,
+        phone: '',
+        email: '',
+        address: '',
+        inPrison: true,
+        imputadoStatus: 'imputado',
+        imputadoModule: moduleText,
+        prisonModule: moduleText,
+        representative: null,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+      clients.unshift(created);
+      if (rutKey) byRut.set(rutKey, created);
+      byName.set(nameKey, created);
+      imported += 1;
+    });
+  });
+
+  saveClients(clients);
+  renderAll();
+  playSaveChime();
+  showToast(`Importación cárcel lista: ${imported} nuevos, ${updated} actualizados.`, { forcePopup: true });
+  return { imported, updated, skipped };
+}
+
+window.importPrisonClientsFromSpreadsheetRows = importPrisonClientsFromSpreadsheetRows;
+
 function isValidRut(value) {
   const clean = String(value || '').replace(/[.\-]/g, '').toUpperCase();
   return /^\d{7,8}[\dK]$/.test(clean);
