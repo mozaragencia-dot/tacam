@@ -2357,6 +2357,7 @@ function buildGendarmeriaTemplateData(visits) {
     fechaHoy: String(safeVisits[0]?.date || getTomorrowDateString()),
     totalVisitas: String(Array.isArray(visits) ? visits.length : 0),
     folioDocumento: `TAC-${folioBase}`,
+    abogadaFirma: '',
     visits: safeVisits.map((booking, index) => ({
       numero: index + 1,
       hora: String(booking?.time || '--:--'),
