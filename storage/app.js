@@ -795,13 +795,16 @@ async function sendWhatsAppNotification(phoneRaw, message) {
   if (!toPhone || !cleanMessage) {
     return { ok: false, status: 'invalid_payload', twilioSid: '', errorMessage: 'phone_or_message_invalid' };
   }
+
   if (!APP_CONFIG.internalToken) {
-    console.warn('APP_INTERNAL_TOKEN no configurado para endpoint interno de WhatsApp.');
+    console.warn('APP_INTERNAL_TOKEN no configurado para endpoint interno de WhatsApp. El envío se omite para evitar 401.');
     return { ok: false, status: 'missing_internal_token', twilioSid: '', errorMessage: 'missing_internal_token' };
   }
 
-  const headers = { 'Content-Type': 'application/json' };
-  headers['X-Internal-Token'] = APP_CONFIG.internalToken;
+  const headers = {
+    'Content-Type': 'application/json',
+    'X-Internal-Token': APP_CONFIG.internalToken
+  };
 
   try {
     const response = await fetch(APP_CONFIG.twilioEndpoint, {
@@ -810,6 +813,17 @@ async function sendWhatsAppNotification(phoneRaw, message) {
       body: JSON.stringify({ toPhone, message: cleanMessage })
     });
     const data = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+      const remoteError = String(data.error_message || '').trim();
+      if (response.status === 401) {
+        console.warn('Twilio endpoint rechazó autenticación (401). Revisa APP_INTERNAL_TOKEN en frontend y servidor.');
+      } else {
+        console.warn(`Twilio endpoint error HTTP ${response.status}.`);
+      }
+      if (remoteError) console.warn('Twilio detalle:', remoteError);
+    }
+
     return {
       ok: Boolean(response.ok && data.ok),
       status: String(data.status || (response.ok ? 'sent' : 'error')),
