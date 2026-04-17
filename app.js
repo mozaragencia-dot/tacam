@@ -783,13 +783,13 @@ async function sendWhatsAppNotification(phoneRaw, message) {
   if (!toPhone || !cleanMessage) {
     return { ok: false, status: 'invalid_payload', twilioSid: '', errorMessage: 'phone_or_message_invalid' };
   }
-  if (!APP_CONFIG.internalToken) {
-    console.warn('APP_INTERNAL_TOKEN no configurado para endpoint interno de WhatsApp.');
-    return { ok: false, status: 'missing_internal_token', twilioSid: '', errorMessage: 'missing_internal_token' };
-  }
 
   const headers = { 'Content-Type': 'application/json' };
-  headers['X-Internal-Token'] = APP_CONFIG.internalToken;
+  if (APP_CONFIG.internalToken) {
+    headers['X-Internal-Token'] = APP_CONFIG.internalToken;
+  } else {
+    console.warn('APP_INTERNAL_TOKEN no configurado para endpoint interno de WhatsApp. Se intentará envío sin token.');
+  }
 
   try {
     const response = await fetch(APP_CONFIG.twilioEndpoint, {
