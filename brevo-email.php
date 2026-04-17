@@ -147,10 +147,11 @@ function build_email_html(string $toName, string $subject, string $textContent, 
       <td align="center" style="padding:30px 10px;">
         <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;border-radius:8px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.08);">
           <tr>
-            <td style="background-color:#b21f3a;padding:36px 40px;text-align:center;">
-              <h1 style="margin:0;font-size:42px;color:#ffffff;letter-spacing:6px;font-weight:700;font-family:Georgia,'Times New Roman',serif;">TACAM</h1>
+            <td style="background-color:#8b1a2b;padding:20px 40px;text-align:center;border-radius:4px 4px 0 0;">
+              <img src="https://tacam.cl/wp-content/uploads/2023/11/logo-tacam-1-registrad-blancoo_.png" alt="TACAM Logo" style="max-width:180px;height:auto;display:block;margin:0 auto;">
             </td>
           </tr>
+          <tr><td style="background-color:#1b2a4a;height:4px;font-size:0;line-height:0;">&nbsp;</td></tr>
           <tr>
             <td style="background-color:#7a1428;height:4px;font-size:0;line-height:0;">&nbsp;</td>
           </tr>
@@ -231,7 +232,6 @@ function build_email_html(string $toName, string $subject, string $textContent, 
                 </tr>
               </table>
 
-              <p style="margin:24px 0 0;font-size:13px;color:#9ca3af;text-align:center;line-height:1.5;">Si necesita reagendar o cancelar su cita, contáctenos con al menos 24 horas de anticipación.</p>
             </td>
           </tr>
           <tr>
