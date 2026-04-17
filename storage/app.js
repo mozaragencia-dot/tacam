@@ -113,6 +113,7 @@ const modulePanels = document.querySelectorAll('[data-module-panel]');
 const toast = document.getElementById('toast');
 const savePopup = document.getElementById('save-popup');
 const savePopupMessage = document.getElementById('save-popup-message');
+const savePopupOkBtn = document.getElementById('save-popup-ok');
 const syncIndicator = document.getElementById('sync-indicator');
 const clientsShowMoreBtn = document.getElementById('clients-show-more');
 const CLIENTS_PAGE_SIZE = 10;
@@ -127,7 +128,6 @@ const APP_CONFIG = {
   ).trim()
 };
 let toastTimer = null;
-let savePopupTimer = null;
 let clientsVisibleLimit = CLIENTS_PAGE_SIZE;
 
 function switchModule(moduleName) {
@@ -151,10 +151,6 @@ function showSavePopup(message) {
   if (!savePopup || !savePopupMessage) return;
   savePopupMessage.textContent = String(message || 'Datos guardados correctamente.');
   savePopup.hidden = false;
-  if (savePopupTimer) clearTimeout(savePopupTimer);
-  savePopupTimer = setTimeout(() => {
-    savePopup.hidden = true;
-  }, 1700);
 }
 
 function showToast(message) {
@@ -3545,6 +3541,12 @@ syncLawyerAndProfileUsers();
 if (savePopup) {
   savePopup.addEventListener('click', () => {
     savePopup.hidden = true;
+  });
+}
+if (savePopupOkBtn) {
+  savePopupOkBtn.addEventListener('click', event => {
+    event.stopPropagation();
+    if (savePopup) savePopup.hidden = true;
   });
 }
 
