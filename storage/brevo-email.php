@@ -3,29 +3,36 @@ declare(strict_types=1);
 
 header('Content-Type: application/json; charset=utf-8');
 
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    http_response_code(405);
-    echo json_encode(['ok' => false, 'error' => 'Method not allowed']);
+function respond(int $httpCode, bool $ok, string $message, array $extra = []): void
+{
+    http_response_code($httpCode);
+    echo json_encode(array_merge([
+        'ok' => $ok,
+        'message' => $message,
+    ], $extra), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
 }
 
-$apiKey = getenv('BREVO_API_KEY') ?: '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';
-$senderEmail = getenv('BREVO_SENDER_EMAIL') ?: 'tacam@agenciayousay.cl';
-$senderName = getenv('BREVO_SENDER_NAME') ?: 'tacam';
-$replyToEmail = getenv('BREVO_REPLY_TO_EMAIL') ?: '';
-$replyToName = getenv('BREVO_REPLY_TO_NAME') ?: $senderName;
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    respond(405, false, 'Method not allowed');
+}
 
-if ($apiKey === '' || $senderEmail === '') {
-    http_response_code(500);
-    echo json_encode(['ok' => false, 'error' => 'Brevo server config missing']);
-    exit;
+$apiKey = trim((string)(getenv('BREVO_API_KEY') ?: ''));
+$senderEmail = trim((string)(getenv('BREVO_SENDER_EMAIL') ?: 'tacam@agenciayousay.cl'));
+$senderName = trim((string)(getenv('BREVO_SENDER_NAME') ?: 'tacam'));
+$replyToEmail = trim((string)(getenv('BREVO_REPLY_TO_EMAIL') ?: ''));
+$replyToName = trim((string)(getenv('BREVO_REPLY_TO_NAME') ?: $senderName));
+
+if ($apiKey === '') {
+    respond(500, false, 'BREVO_API_KEY missing on server');
+}
+if ($senderEmail === '') {
+    respond(500, false, 'BREVO_SENDER_EMAIL missing on server');
 }
 
 $payload = json_decode(file_get_contents('php://input') ?: '', true);
 if (!is_array($payload)) {
-    http_response_code(400);
-    echo json_encode(['ok' => false, 'error' => 'Invalid JSON body']);
-    exit;
+    respond(400, false, 'Invalid JSON body');
 }
 
 $toEmail = trim((string)($payload['toEmail'] ?? ''));
@@ -34,9 +41,7 @@ $subject = trim((string)($payload['subject'] ?? ''));
 $textContent = trim((string)($payload['textContent'] ?? ''));
 
 if ($toEmail === '' || $subject === '' || $textContent === '') {
-    http_response_code(422);
-    echo json_encode(['ok' => false, 'error' => 'Missing email payload fields']);
-    exit;
+    respond(422, false, 'Missing email payload fields');
 }
 
 function escape_html(string $value): string
@@ -118,6 +123,7 @@ curl_setopt_array($ch, [
         'content-type: application/json',
     ],
     CURLOPT_POSTFIELDS => json_encode($brevoPayload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+    CURLOPT_TIMEOUT => 20,
 ]);
 
 $response = curl_exec($ch);
@@ -126,10 +132,22 @@ $statusCode = (int) curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
 curl_close($ch);
 
 if ($response === false) {
-    http_response_code(502);
-    echo json_encode(['ok' => false, 'error' => $curlError !== '' ? $curlError : 'Brevo request failed']);
-    exit;
+    respond(502, false, $curlError !== '' ? 'Brevo request failed' : 'Brevo request failed');
 }
 
-http_response_code($statusCode >= 200 && $statusCode < 300 ? 200 : $statusCode);
-echo $response;
+if ($statusCode < 200 || $statusCode >= 300) {
+    $decoded = json_decode((string)$response, true);
+    $apiMessage = is_array($decoded) ? (string)($decoded['message'] ?? '') : '';
+    $message = $statusCode === 401
+        ? 'Brevo rejected authentication. Check API key and IP restrictions.'
+        : 'Brevo API returned an error';
+    respond($statusCode === 401 ? 401 : 502, false, $message, [
+        'brevo_status' => $statusCode,
+        'brevo_message' => $apiMessage,
+    ]);
+}
+
+$decodedSuccess = json_decode((string)$response, true);
+respond(200, true, 'Email sent', [
+    'brevo_message_id' => is_array($decodedSuccess) ? (string)($decodedSuccess['messageId'] ?? '') : '',
+]);

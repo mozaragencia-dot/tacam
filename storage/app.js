@@ -119,7 +119,9 @@ const CLIENTS_PAGE_SIZE = 10;
 const APP_CONFIG = {
   twilioEndpoint: 'twilio-whatsapp.php',
   internalToken: String(
-    window.__APP_INTERNAL_TOKEN
+    window.APP_CONFIG?.APP_INTERNAL_TOKEN
+    || window.__APP_INTERNAL_TOKEN
+    || localStorage.getItem('APP_INTERNAL_TOKEN')
     || document.querySelector('meta[name=\"app-internal-token\"]')?.content
     || ''
   ).trim()
@@ -755,7 +757,13 @@ async function sendEmailViaBrevo(booking, subject, message) {
     });
 
     if (!response.ok) {
-      console.warn('Brevo email error', await response.text());
+      const body = await response.text();
+      if (response.status === 401) {
+        console.warn('Brevo rechazó la autenticación. Revisar API key o restricciones IP en servidor.');
+      } else {
+        console.warn(`Brevo email error HTTP ${response.status}`);
+      }
+      if (body) console.warn('Brevo detalle:', body);
       return false;
     }
 
@@ -787,7 +795,7 @@ async function sendWhatsAppNotification(phoneRaw, message) {
     return { ok: false, status: 'invalid_payload', twilioSid: '', errorMessage: 'phone_or_message_invalid' };
   }
   if (!APP_CONFIG.internalToken) {
-    console.warn('APP internal token missing for Twilio WhatsApp.');
+    console.warn('APP_INTERNAL_TOKEN no configurado para endpoint interno de WhatsApp.');
     return { ok: false, status: 'missing_internal_token', twilioSid: '', errorMessage: 'missing_internal_token' };
   }
 
@@ -3512,6 +3520,11 @@ lawyerCalendarMonth.value = currentMonth;
 gendarmeriaEmailInput.value = GENDARMERIA_RECIPIENTS[0];
 gendarmeriaEmail2Input.value = GENDARMERIA_RECIPIENTS[1];
 clientPhoneInput.value = '';
+if (APP_CONFIG.internalToken) {
+  console.info(`APP_INTERNAL_TOKEN cargado para WhatsApp interno (longitud: ${APP_CONFIG.internalToken.length}).`);
+} else {
+  console.warn('APP_INTERNAL_TOKEN no configurado para endpoint interno de WhatsApp.');
+}
 if (deleteClientBtn) deleteClientBtn.disabled = true;
 if (clientsShowMoreBtn) {
   clientsShowMoreBtn.addEventListener('click', () => {
