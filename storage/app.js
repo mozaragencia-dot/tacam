@@ -164,6 +164,15 @@ function showToast(message, options = {}) {
   }, 2400);
 }
 
+function removeRequiredConstraints() {
+  document.querySelectorAll('[required]').forEach(field => {
+    if (field instanceof HTMLInputElement || field instanceof HTMLSelectElement || field instanceof HTMLTextAreaElement) {
+      field.required = false;
+      field.removeAttribute('required');
+    }
+  });
+}
+
 function playSaveChime() {
   try {
     const AudioCtx = window.AudioContext || window.webkitAudioContext;
@@ -330,7 +339,7 @@ function updateRepresentativeVisibility() {
     field.hidden = !isImputado;
     const input = field.querySelector('input');
     if (input) {
-      input.required = isImputado && (input.name === 'representativeName' || input.name === 'representativeLastName');
+      input.required = false;
       if (!isImputado) input.value = '';
     }
   });
@@ -344,7 +353,7 @@ function updateImputadoModuleVisibility() {
     field.hidden = !isImputado;
     const input = field.querySelector('input');
     if (input) {
-      input.required = isImputado;
+      input.required = false;
       if (!isImputado) input.value = '';
     }
   });
@@ -361,7 +370,7 @@ function updateEditRepresentativeVisibility() {
     field.hidden = !isImputado;
     const input = field.querySelector('input');
     if (input) {
-      input.required = isImputado && (input.name === 'representativeName' || input.name === 'representativeLastName');
+      input.required = false;
     }
   });
 }
@@ -2849,7 +2858,7 @@ clientForm.addEventListener('submit', event => {
   const imputadoModule = inPrison ? String(data.get('imputadoModule') || '').trim() : '';
   const representative = buildRepresentativeRecord(data, name);
 
-  if (!isValidRut(rut)) {
+  if (rut && !isValidRut(rut)) {
     clientRutInput.setCustomValidity('El RUT debe tener formato xx.xxx.xxx-x');
     clientRutInput.reportValidity();
     return;
@@ -2864,29 +2873,15 @@ clientForm.addEventListener('submit', event => {
   clientPhoneInput.setCustomValidity('');
   clientForm.elements.email.setCustomValidity('');
 
-  if (!name || !address) return;
-
-  if (inPrison && !imputadoModule) {
-    if (imputadoModuleInput) {
-      imputadoModuleInput.setCustomValidity('Debes indicar el módulo si la persona está en la cárcel.');
-      imputadoModuleInput.reportValidity();
-    }
-    return;
-  }
   if (imputadoModuleInput) imputadoModuleInput.setCustomValidity('');
 
-  if (imputadoStatus === 'imputado' && (!representative?.name || !representative?.lastName)) {
-    representativeNameInput.setCustomValidity('Debes indicar el nombre del representante.');
-    representativeNameInput.reportValidity();
-    return;
-  }
   representativeNameInput.setCustomValidity('');
   representativeLastNameInput.setCustomValidity('');
 
   const role = getCurrentSessionRole();
   const sessionLawyer = getCurrentSessionLawyerName();
   const clients = getClients();
-  const existing = clients.find(client => (client.rut || '').trim() === rut);
+  const existing = rut ? clients.find(client => (client.rut || '').trim() === rut) : null;
 
   if (existing) {
     existing.name = name;
@@ -2944,9 +2939,9 @@ clientEditForm.addEventListener('submit', event => {
   const hiredLater = Boolean(data.get('hiredLater'));
   const assignedTo = normalizeAssignedToValue(data.get('assignedTo'));
 
-  if (!clientId || !name || !address) return;
+  if (!clientId) return;
 
-  if (!isValidRut(rut)) {
+  if (rut && !isValidRut(rut)) {
     clientEditRutInput.setCustomValidity('RUT inválido');
     clientEditRutInput.reportValidity();
     return;
@@ -2959,11 +2954,6 @@ clientEditForm.addEventListener('submit', event => {
     return;
   }
   clientEditPhoneInput.setCustomValidity('');
-  if (imputadoStatus === 'imputado' && (!representative?.name || !representative?.lastName)) {
-    clientEditRepresentativeNameInput.setCustomValidity('Debes indicar el nombre del representante.');
-    clientEditRepresentativeNameInput.reportValidity();
-    return;
-  }
   clientEditRepresentativeNameInput.setCustomValidity('');
 
   const clients = getClients();
@@ -3098,13 +3088,6 @@ prisonBookingForm.addEventListener('submit', async event => {
   }
 
   const prisonModule = String(data.get('prisonModule') || '').trim() || getClientModuleValue(client);
-  if (!prisonModule) {
-    if (prisonClientModuleInput) {
-      prisonClientModuleInput.setCustomValidity('Debes indicar el módulo del interno.');
-      prisonClientModuleInput.reportValidity();
-    }
-    return;
-  }
   if (prisonClientModuleInput) prisonClientModuleInput.setCustomValidity('');
 
   if (String(client.prisonModule || '').trim() !== prisonModule || String(client.imputadoModule || '').trim() !== prisonModule) {
@@ -3692,6 +3675,7 @@ profileForm.addEventListener('submit', event => {
 });
 
 switchModule('create');
+removeRequiredConstraints();
 
 const currentMonth = monthValueFromDate(new Date());
 agendaMonthInput.value = currentMonth;
