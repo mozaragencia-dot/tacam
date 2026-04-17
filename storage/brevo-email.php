@@ -138,8 +138,11 @@ if ($response === false) {
 if ($statusCode < 200 || $statusCode >= 300) {
     $decoded = json_decode((string)$response, true);
     $apiMessage = is_array($decoded) ? (string)($decoded['message'] ?? '') : '';
+    $apiMessageLower = strtolower($apiMessage);
     $message = $statusCode === 401
-        ? 'Brevo rejected authentication. Check API key and IP restrictions.'
+        ? (str_contains($apiMessageLower, 'key not found')
+            ? 'Brevo rejected authentication: API key not found. Check BREVO_API_KEY on server.'
+            : 'Brevo rejected authentication. Check API key and IP restrictions.')
         : 'Brevo API returned an error';
     respond($statusCode === 401 ? 401 : 502, false, $message, [
         'brevo_status' => $statusCode,

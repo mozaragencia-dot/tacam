@@ -744,7 +744,11 @@ async function sendEmailViaBrevo(booking, subject, message) {
     if (!response.ok) {
       const body = await response.text();
       if (response.status === 401) {
-        console.warn('Brevo rechazó la autenticación. Revisar API key o restricciones IP en servidor.');
+        if (body.toLowerCase().includes('key not found')) {
+          console.warn('Brevo rechazó la autenticación: API key no encontrada. Revisa BREVO_API_KEY en el servidor.');
+        } else {
+          console.warn('Brevo rechazó la autenticación. Revisar API key o restricciones IP en servidor.');
+        }
       } else {
         console.warn(`Brevo email error HTTP ${response.status}`);
       }
