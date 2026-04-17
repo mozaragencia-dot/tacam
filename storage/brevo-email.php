@@ -217,7 +217,7 @@ function build_email_html(string $toName, string $subject, string $textContent, 
                         <td width="28" valign="top" style="padding-top:2px;"><span style="font-size:16px;">📍</span></td>
                         <td style="padding-left:8px;">
                           <p style="margin:0;font-size:11px;color:#b21f3a;text-transform:uppercase;letter-spacing:0.5px;font-weight:700;">Ubicación</p>
-                          <p style="margin:2px 0 0;font-size:15px;color:#2a2a2a;font-weight:600;">{$ubicacion}</p>
+                          <p style="margin:2px 0 0;font-size:15px;color:#2a2a2a;font-weight:600;">Jorge Washington 2675, Oficina 1002 – 1003, Antofagasta.</p>
                         </td>
                       </tr>
                     </table>
@@ -232,6 +232,8 @@ function build_email_html(string $toName, string $subject, string $textContent, 
                   </td>
                 </tr>
               </table>
+
+              <p style="margin:24px 0 0;font-size:13px;color:#9ca3af;text-align:center;line-height:1.5;">Si necesita reagendar o cancelar su cita, contáctenos.</p>
 
             </td>
           </tr>
