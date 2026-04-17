@@ -154,14 +154,15 @@ function showSavePopup(message) {
 }
 
 function showToast(message) {
+  const text = String(message || 'Acción realizada');
+  if (shouldShowSavePopup(text)) showSavePopup(text);
   if (!toast) return;
-  toast.textContent = String(message || 'Acción realizada');
+  toast.textContent = text;
   toast.hidden = false;
   if (toastTimer) clearTimeout(toastTimer);
   toastTimer = setTimeout(() => {
     toast.hidden = true;
   }, 2400);
-  if (shouldShowSavePopup(message)) showSavePopup(message);
 }
 
 function playSaveChime() {
