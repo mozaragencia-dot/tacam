@@ -726,7 +726,7 @@ function hasNotificationConsent(booking) {
   return Boolean(booking?.notificationsConsent);
 }
 
-async function sendEmailViaBrevo(booking, subject, message) {
+async function sendEmailViaBrevo(booking, subject, message, options = {}) {
   const email = String(booking?.email || '').trim();
   if (!email) return false;
 
@@ -738,7 +738,9 @@ async function sendEmailViaBrevo(booking, subject, message) {
         toEmail: email,
         toName: booking.customer || 'Cliente',
         subject,
-        textContent: message
+        textContent: message,
+        templateType: String(options?.templateType || '').trim(),
+        templateData: options?.templateData && typeof options.templateData === 'object' ? options.templateData : {}
       })
     });
 
@@ -875,7 +877,17 @@ function buildVisitScheduledMessage(booking) {
   return `Calendario de visitas TACAM: enviamos correo automático a la persona. Tu cita quedó agendada para ${booking.date} ${booking.time}. Materia: ${matter}. Abogada: ${booking.assignedTo || 'Por confirmar'}. Luego recibirás un recordatorio de que vas a tener una cita.`;
 }
 
-async function notifyBookingChannels(booking, message, emailSubject) {
+function buildEmailTemplateData(booking, extra = {}) {
+  return {
+    fecha: String(extra.fecha || booking?.date || '-').trim() || '-',
+    hora: String(extra.hora || booking?.time || '--:--').trim() || '--:--',
+    abogado: String(extra.abogado || booking?.assignedTo || 'Por confirmar').trim() || 'Por confirmar',
+    area: String(extra.area || normalizeMatterLabel(booking?.matter) || 'General').trim() || 'General',
+    ubicacion: String(extra.ubicacion || booking?.address || 'Antofagasta, Chile').trim() || 'Antofagasta, Chile'
+  };
+}
+
+async function notifyBookingChannels(booking, message, emailSubject, emailOptions = {}) {
   if (!hasNotificationConsent(booking)) return false;
 
   const targets = [cleanPhone(booking.phone), getLawyerPhone(booking.assignedTo)].filter(Boolean);
@@ -886,13 +898,16 @@ async function notifyBookingChannels(booking, message, emailSubject) {
     console.warn('No se pudo enviar WhatsApp por Twilio para la reserva', booking?.id || '');
   }
 
-  const emailSent = await sendEmailViaBrevo(booking, emailSubject, message);
+  const emailSent = await sendEmailViaBrevo(booking, emailSubject, message, emailOptions);
   return sent || emailSent;
 }
 
 async function notifyVisitScheduled(booking) {
   const message = buildWhatsAppConfirmationMessage(booking) || buildVisitScheduledMessage(booking);
-  return notifyBookingChannels(booking, message, isPrisonVisit(booking) ? 'TACAM: visita a la cárcel agendada' : 'Calendario de visitas TACAM: cita agendada');
+  return notifyBookingChannels(booking, message, isPrisonVisit(booking) ? 'TACAM: visita a la cárcel agendada' : 'Calendario de visitas TACAM: cita agendada', {
+    templateType: 'appointment_scheduled',
+    templateData: buildEmailTemplateData(booking)
+  });
 }
 
 function getLawyerPhone(lawyerName) {
@@ -902,7 +917,10 @@ function getLawyerPhone(lawyerName) {
 
 async function notifyReschedule(booking, fromDate, toDate) {
   const message = buildRescheduleMessage(booking, fromDate, toDate);
-  return notifyBookingChannels(booking, message, 'Reagendamiento de cita TACAM');
+  return notifyBookingChannels(booking, message, 'Reagendamiento de cita TACAM', {
+    templateType: 'reschedule',
+    templateData: buildEmailTemplateData(booking, { fecha: toDate })
+  });
 }
 
 async function notifyUpcomingAppointments() {
@@ -918,7 +936,10 @@ async function notifyUpcomingAppointments() {
     if (diffMinutes < 0) continue;
 
     if (diffMinutes <= 1440 && !booking.reminder24hSentAt) {
-      const sent24h = await notifyBookingChannels(booking, build24hReminderMessage(booking), 'Recordatorio TACAM: cita en 24 horas');
+      const sent24h = await notifyBookingChannels(booking, build24hReminderMessage(booking), 'Recordatorio TACAM: cita en 24 horas', {
+        templateType: 'reminder_24h',
+        templateData: buildEmailTemplateData(booking)
+      });
       if (sent24h) {
         booking.reminder24hSentAt = now.toISOString();
         hasUpdates = true;
@@ -927,7 +948,10 @@ async function notifyUpcomingAppointments() {
 
 
     if (diffMinutes <= 60 && !booking.reminder1hSentAt) {
-      const sent1h = await notifyBookingChannels(booking, buildReminderMessage(booking, diffMinutes), 'Recordatorio TACAM: vas a tener una cita');
+      const sent1h = await notifyBookingChannels(booking, buildReminderMessage(booking, diffMinutes), 'Recordatorio TACAM: vas a tener una cita', {
+        templateType: 'reminder_1h',
+        templateData: buildEmailTemplateData(booking)
+      });
       if (sent1h) {
         booking.reminder1hSentAt = now.toISOString();
         hasUpdates = true;
@@ -1020,7 +1044,10 @@ async function updateBookingStatusWithNotification(bookingId, status) {
       ? 'TACAM: reserva cancelada'
       : `TACAM: estado actualizado (${statusLabel(status)})`;
 
-  await notifyBookingChannels(booking, buildStatusChangeMessage(booking, status), subject);
+  await notifyBookingChannels(booking, buildStatusChangeMessage(booking, status), subject, {
+    templateType: 'status_update',
+    templateData: buildEmailTemplateData(booking)
+  });
 }
 
 function formatAppointment(booking) {
