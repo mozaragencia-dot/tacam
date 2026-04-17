@@ -393,7 +393,7 @@ function updateBookingRepresentativeVisibility() {
     field.hidden = !isImputado;
     const input = field.querySelector('input');
     if (input) {
-      input.required = isImputado && (input.name === 'bookingRepresentativeName' || input.name === 'bookingRepresentativeLastName');
+      input.required = false;
       if (!isImputado) input.value = '';
     }
   });
@@ -3002,9 +3002,7 @@ bookingForm.addEventListener('submit', async event => {
     bookingRepresentative.modulo = bookingRepresentativeModulo;
   }
   if (bookingImputadoStatus === 'imputado' && (!bookingRepresentative?.name || !bookingRepresentative?.lastName)) {
-    bookingRepresentativeNameInput.setCustomValidity('Debes indicar el nombre del representante.');
-    bookingRepresentativeNameInput.reportValidity();
-    return;
+    showToast('⚠️ Se agendó sin representante. Puedes agregarlo más tarde desde Imputados.');
   }
   bookingRepresentativeNameInput.setCustomValidity('');
 
@@ -3038,7 +3036,10 @@ bookingForm.addEventListener('submit', async event => {
     checkedInAt: ''
   });
   saveBookings(bookings);
-  await notifyVisitScheduled(bookings[0]);
+  renderAll();
+  notifyVisitScheduled(bookings[0]).catch(error => {
+    console.error('No se pudo enviar notificación al agendar reserva:', error);
+  });
   bookingForm.reset();
   clientSearchInput.value = '';
   clientSearchResults.replaceChildren();
@@ -3048,7 +3049,6 @@ bookingForm.addEventListener('submit', async event => {
   bookingImputadoStatusInput.dataset.manualChange = '0';
   bookingImputadoStatusInput.value = 'no_imputado';
   updateBookingRepresentativeVisibility();
-  renderAll();
   playSaveChime();
   showToast('✅ Reserva guardada correctamente.', { forcePopup: true });
 });
@@ -3105,10 +3105,12 @@ prisonBookingForm.addEventListener('submit', async event => {
     checkedInAt: ''
   });
   saveBookings(bookings);
-  await notifyVisitScheduled(bookings[0]);
+  renderAll();
+  notifyVisitScheduled(bookings[0]).catch(error => {
+    console.error('No se pudo enviar notificación al agendar visita a la cárcel:', error);
+  });
   prisonBookingForm.reset();
   setPrisonClientSelection(null);
-  renderAll();
   playSaveChime();
   showToast('Visita a la cárcel agendada correctamente.', { forcePopup: true });
 });

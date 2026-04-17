@@ -293,14 +293,6 @@
             <input id="prison-month" type="month" />
           </label>
         </div>
-        <div class="grid">
-          <label class="full" hidden>Correo Gendarmería 1
-            <input id="gendarmeria-email" type="email" readonly />
-          </label>
-          <label class="full" hidden>Correo Gendarmería 2
-            <input id="gendarmeria-email-2" type="email" readonly />
-          </label>
-        </div>
         <form id="prison-booking-form" class="grid">
           <label class="full">Buscar contacto
             <input id="prison-client-search" autocomplete="off" placeholder="Buscar por nombre, RUT, teléfono o módulo..." />
@@ -343,6 +335,14 @@
         <div class="gendarmeria-banner">
           <strong>Envío manual a Gendarmería</strong>
           <p class="muted">Se listan automáticamente las personas con visita para mañana. Puedes seleccionar una o varias para enviar manualmente.</p>
+          <div class="grid">
+            <label>Destinatario 1
+              <input id="gendarmeria-email" type="email" readonly />
+            </label>
+            <label>Destinatario 2
+              <input id="gendarmeria-email-2" type="email" readonly />
+            </label>
+          </div>
           <label class="full">Visitas seleccionables
             <select id="gendarmeria-visit-select" multiple size="7"></select>
           </label>
