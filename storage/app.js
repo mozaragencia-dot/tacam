@@ -153,9 +153,10 @@ function showSavePopup(message) {
   savePopup.hidden = false;
 }
 
-function showToast(message) {
+function showToast(message, options = {}) {
   const text = String(message || 'Acción realizada');
-  if (shouldShowSavePopup(text)) showSavePopup(text);
+  const forcePopup = Boolean(options && options.forcePopup);
+  if (forcePopup || shouldShowSavePopup(text)) showSavePopup(text);
   if (!toast) return;
   toast.textContent = text;
   toast.hidden = false;
@@ -2917,7 +2918,7 @@ bookingForm.addEventListener('submit', async event => {
   updateBookingRepresentativeVisibility();
   renderAll();
   playSaveChime();
-  showToast('✅ Reserva guardada correctamente.');
+  showToast('✅ Reserva guardada correctamente.', { forcePopup: true });
 });
 
 prisonBookingForm.addEventListener('submit', async event => {
@@ -2983,7 +2984,7 @@ prisonBookingForm.addEventListener('submit', async event => {
   setPrisonClientSelection(null);
   renderAll();
   playSaveChime();
-  showToast('Visita a la cárcel agendada correctamente.');
+  showToast('Visita a la cárcel agendada correctamente.', { forcePopup: true });
 });
 
 clientRutInput.addEventListener('input', () => {
