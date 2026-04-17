@@ -15,6 +15,25 @@ function respond(int $httpCode, bool $ok, string $status, string $errorMessage =
     exit;
 }
 
+function maskPhone(string $phone): string
+{
+    $normalized = preg_replace('/\s+/', '', $phone) ?? '';
+    if ($normalized === '') {
+        return '';
+    }
+
+    if (strlen($normalized) <= 6) {
+        return $normalized;
+    }
+
+    return substr($normalized, 0, 5) . str_repeat('*', max(0, strlen($normalized) - 7)) . substr($normalized, -2);
+}
+
+function logTwilioDebug(string $stage, array $context): void
+{
+    error_log('[twilio-whatsapp] ' . $stage . ' ' . json_encode($context, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+}
+
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     respond(405, false, 'method_not_allowed', 'Method not allowed');
 }
@@ -24,8 +43,22 @@ $accountSid = trim((string)(getenv('TWILIO_ACCOUNT_SID') ?: ''));
 $authToken = trim((string)(getenv('TWILIO_AUTH_TOKEN') ?: ''));
 $fromWhatsApp = trim((string)(getenv('TWILIO_WHATSAPP_FROM') ?: ''));
 
-if ($internalToken === '' || $accountSid === '' || $authToken === '' || $fromWhatsApp === '') {
-    respond(500, false, 'config_error', 'Missing required server configuration');
+$missingEnv = [];
+if ($internalToken === '') {
+    $missingEnv[] = 'APP_INTERNAL_TOKEN';
+}
+if ($accountSid === '') {
+    $missingEnv[] = 'TWILIO_ACCOUNT_SID';
+}
+if ($authToken === '') {
+    $missingEnv[] = 'TWILIO_AUTH_TOKEN';
+}
+if ($fromWhatsApp === '') {
+    $missingEnv[] = 'TWILIO_WHATSAPP_FROM';
+}
+
+if ($missingEnv !== []) {
+    respond(500, false, 'config_error', 'Missing required environment variables: ' . implode(', ', $missingEnv));
 }
 
 $providedToken = trim((string)($_SERVER['HTTP_X_INTERNAL_TOKEN'] ?? ''));
@@ -51,14 +84,19 @@ if (!preg_match('/^\+\d{8,15}$/', $normalizedTo)) {
     respond(422, false, 'validation_error', 'Invalid destination phone format');
 }
 
-if (!preg_match('/^whatsapp:\+\d{8,15}$/', $fromWhatsApp)) {
-    respond(500, false, 'config_error', 'Invalid TWILIO_WHATSAPP_FROM format');
+$normalizedFrom = preg_replace('/\s+/', '', strtolower($fromWhatsApp)) ?? '';
+if (!preg_match('/^whatsapp:\+\d{8,15}$/', $normalizedFrom)) {
+    respond(500, false, 'config_error', 'Invalid TWILIO_WHATSAPP_FROM format. Expected whatsapp:+########');
+}
+
+if ($normalizedFrom === 'whatsapp:+14155238886') {
+    respond(500, false, 'config_error', 'Twilio WhatsApp sender is still sandbox. Configure a production sender in TWILIO_WHATSAPP_FROM.');
 }
 
 $twilioUrl = sprintf('https://api.twilio.com/2010-04-01/Accounts/%s/Messages.json', rawurlencode($accountSid));
 $formData = http_build_query([
     'To' => 'whatsapp:' . $normalizedTo,
-    'From' => $fromWhatsApp,
+    'From' => $normalizedFrom,
     'Body' => $message,
 ], '', '&', PHP_QUERY_RFC3986);
 
@@ -81,15 +119,33 @@ $statusCode = (int) curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
 curl_close($ch);
 
 if ($response === false) {
-    respond(502, false, 'twilio_unreachable', $curlError !== '' ? 'Twilio request failed' : 'Twilio request failed');
+    logTwilioDebug('curl_error', [
+        'http_status' => $statusCode,
+        'from' => maskPhone($normalizedFrom),
+        'to' => maskPhone('whatsapp:' . $normalizedTo),
+        'error' => $curlError,
+    ]);
+    respond(502, false, 'twilio_unreachable', $curlError !== '' ? $curlError : 'Twilio request failed');
 }
 
 $twilioBody = json_decode((string)$response, true);
 $twilioSid = is_array($twilioBody) ? (string)($twilioBody['sid'] ?? '') : '';
 $twilioErrorMessage = is_array($twilioBody) ? (string)($twilioBody['message'] ?? '') : '';
+$twilioErrorCode = is_array($twilioBody) ? (string)($twilioBody['code'] ?? '') : '';
+
+logTwilioDebug('response', [
+    'http_status' => $statusCode,
+    'from' => maskPhone($normalizedFrom),
+    'to' => maskPhone('whatsapp:' . $normalizedTo),
+    'response_body' => $twilioBody ?? $response,
+]);
 
 if ($statusCode < 200 || $statusCode >= 300) {
-    respond(502, false, 'twilio_error', $twilioErrorMessage !== '' ? 'Twilio API returned an error' : 'Twilio API returned an error');
+    $details = $twilioErrorMessage !== '' ? $twilioErrorMessage : 'Twilio API returned an error';
+    if ($twilioErrorCode !== '') {
+        $details .= ' (code ' . $twilioErrorCode . ')';
+    }
+    respond(502, false, 'twilio_error', $details);
 }
 
 respond(200, true, 'sent', '', $twilioSid);
