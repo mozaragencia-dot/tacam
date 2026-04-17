@@ -2340,6 +2340,22 @@ function buildGendarmeriaListMessage(visits) {
   return [...header, ...rows, '', 'TACAM - Sistema de Reservas'].join('\n');
 }
 
+function buildGendarmeriaTemplateData(visits) {
+  const safeVisits = Array.isArray(visits) ? visits.slice(0, 5) : [];
+  const folioBase = Date.now().toString().slice(-8);
+  return {
+    fechaHoy: String(safeVisits[0]?.date || getTomorrowDateString()),
+    totalVisitas: String(Array.isArray(visits) ? visits.length : 0),
+    folioDocumento: `TAC-${folioBase}`,
+    visits: safeVisits.map((booking, index) => ({
+      numero: index + 1,
+      hora: String(booking?.time || '--:--'),
+      nombre: String(booking?.customer || '-'),
+      rut: String(booking?.rut || '-')
+    }))
+  };
+}
+
 function getGendarmeriaRecipients() {
   return [...GENDARMERIA_RECIPIENTS];
 }
@@ -2368,7 +2384,9 @@ async function sendGendarmeriaRoster(visits, subject, options = {}) {
           toEmail,
           toName: 'Gendarmería',
           subject,
-          textContent
+          textContent,
+          templateType: 'gendarmeria_roster',
+          templateData: buildGendarmeriaTemplateData(visits)
         })
       });
       if (!response.ok) throw new Error(await response.text());

@@ -18,8 +18,75 @@ function escape_html(string $value): string
     return htmlspecialchars($value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 }
 
+function build_gendarmeria_roster_html(string $subject, array $templateData): string
+{
+    $safeSubject = escape_html($subject);
+    $fechaHoy = escape_html(trim((string)($templateData['fechaHoy'] ?? date('Y-m-d'))) ?: date('Y-m-d'));
+    $totalVisitas = escape_html(trim((string)($templateData['totalVisitas'] ?? '0')) ?: '0');
+    $folioDocumento = escape_html(trim((string)($templateData['folioDocumento'] ?? ('TAC-' . date('YmdHis')))) ?: ('TAC-' . date('YmdHis')));
+
+    $visits = $templateData['visits'] ?? [];
+    if (!is_array($visits)) {
+        $visits = [];
+    }
+
+    $rowsHtml = '';
+    for ($i = 1; $i <= 5; $i++) {
+        $visit = $visits[$i - 1] ?? [];
+        $hora = escape_html(trim((string)($visit['hora'] ?? '')));
+        $nombre = escape_html(trim((string)($visit['nombre'] ?? '')));
+        $rut = escape_html(trim((string)($visit['rut'] ?? '')));
+        $background = $i % 2 === 1 ? '#f9fafb' : '#ffffff';
+
+        $rowsHtml .= '<tr>'
+            . '<td style="padding:10px 12px;font-size:13px;color:#1b2a4a;font-weight:700;background-color:' . $background . ';border-bottom:1px solid #eaedf2;border-right:1px solid #eaedf2;text-align:center;">' . $i . '</td>'
+            . '<td style="padding:10px 12px;font-size:13px;color:#333;background-color:' . $background . ';border-bottom:1px solid #eaedf2;border-right:1px solid #eaedf2;">' . $hora . '</td>'
+            . '<td style="padding:10px 12px;font-size:13px;color:#333;background-color:' . $background . ';border-bottom:1px solid #eaedf2;border-right:1px solid #eaedf2;">' . $nombre . '</td>'
+            . '<td style="padding:10px 12px;font-size:13px;color:#333;background-color:' . $background . ';border-bottom:1px solid #eaedf2;border-right:1px solid #eaedf2;">' . $rut . '</td>'
+            . '<td style="padding:10px 12px;font-size:13px;color:#333;background-color:' . $background . ';border-bottom:1px solid #eaedf2;border-right:1px solid #eaedf2;"></td>'
+            . '<td style="padding:10px 12px;font-size:13px;color:#333;background-color:' . $background . ';border-bottom:1px solid #eaedf2;"></td>'
+            . '</tr>';
+    }
+
+    return <<<HTML
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{$safeSubject}</title>
+<style>
+  @media print { body { margin: 0; padding: 0; } }
+</style>
+</head>
+<body style="margin:0;padding:0;background-color:#f4f4f4;font-family:Arial,Helvetica,sans-serif;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f4f4;padding:30px 0;"><tr><td align="center">
+<table role="presentation" width="700" cellpadding="0" cellspacing="0" style="max-width:700px;width:100%;background-color:#ffffff;border:1px solid #e0e0e0;border-radius:4px;">
+<tr><td style="background-color:#8b1a2b;padding:20px 40px;text-align:center;border-radius:4px 4px 0 0;"><img src="https://tacam.cl/wp-content/uploads/2023/11/logo-tacam-1-registrad-blancoo_.png" alt="TACAM Logo" style="max-width:180px;height:auto;display:block;margin:0 auto;"></td></tr>
+<tr><td style="background-color:#1b2a4a;height:4px;font-size:0;line-height:0;">&nbsp;</td></tr>
+<tr><td style="padding:28px 40px 8px;text-align:center;"><h1 style="margin:0;font-size:18px;font-weight:700;color:#1b2a4a;letter-spacing:1px;text-transform:uppercase;">Listado de Visitas del Día</h1><div style="width:60px;height:2px;background-color:#8b1a2b;margin:12px auto 0;"></div></td></tr>
+<tr><td style="padding:10px 40px 6px;text-align:center;"><span style="display:inline-block;background-color:#f0f2f5;border:1px solid #dde1e8;border-radius:4px;padding:8px 20px;font-size:14px;font-weight:700;color:#1b2a4a;">📅 Fecha: {$fechaHoy}</span></td></tr>
+<tr><td style="padding:16px 40px 10px;"><p style="margin:0;font-size:14px;color:#333;line-height:1.7;">Estimados funcionarios de Gendarmería,<br><br>Por medio del presente, se informan las visitas programadas para el día de hoy:</p></td></tr>
+<tr><td style="padding:12px 40px;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #dde1e8;border-radius:4px;border-collapse:separate;"><tr><td style="padding:10px 12px;font-size:11px;font-weight:700;color:#ffffff;background-color:#1b2a4a;text-transform:uppercase;letter-spacing:0.5px;border-right:1px solid #2a3d66;">N°</td><td style="padding:10px 12px;font-size:11px;font-weight:700;color:#ffffff;background-color:#1b2a4a;text-transform:uppercase;letter-spacing:0.5px;border-right:1px solid #2a3d66;">Hora</td><td style="padding:10px 12px;font-size:11px;font-weight:700;color:#ffffff;background-color:#1b2a4a;text-transform:uppercase;letter-spacing:0.5px;border-right:1px solid #2a3d66;">Imputado</td><td style="padding:10px 12px;font-size:11px;font-weight:700;color:#ffffff;background-color:#1b2a4a;text-transform:uppercase;letter-spacing:0.5px;border-right:1px solid #2a3d66;">RUT</td><td style="padding:10px 12px;font-size:11px;font-weight:700;color:#ffffff;background-color:#1b2a4a;text-transform:uppercase;letter-spacing:0.5px;border-right:1px solid #2a3d66;">Módulo</td><td style="padding:10px 12px;font-size:11px;font-weight:700;color:#ffffff;background-color:#1b2a4a;text-transform:uppercase;letter-spacing:0.5px;">Abogado</td></tr>{$rowsHtml}</table></td></tr>
+<tr><td style="padding:12px 40px;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td style="background-color:#f0f2f5;border:1px solid #dde1e8;border-radius:4px;padding:14px 20px;"><span style="font-size:13px;color:#1b2a4a;font-weight:700;">Total de visitas programadas: {$totalVisitas}</span></td></tr></table></td></tr>
+<tr><td style="padding:16px 40px;"><p style="margin:0;font-size:14px;color:#333;line-height:1.7;">Agradecemos su gestión y confirmación de las visitas programadas.</p></td></tr>
+<tr><td style="padding:30px 40px 20px;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td style="text-align:center;vertical-align:bottom;padding:10px;"><div style="margin:0 auto;width:280px;"><div style="border-bottom:1px solid #333;padding-top:60px;margin-bottom:12px;"></div><div style="font-size:13px;font-weight:700;color:#1b2a4a;margin-bottom:4px;">CATALINA MUÑOZ VALENZUELA</div><div style="font-size:12px;color:#555;margin-bottom:2px;">Abogada Directora</div><div style="font-size:11px;color:#555;margin-bottom:2px;">TACAM · Oficina Jurídica</div><div style="font-size:10px;color:#888;">Reg. Colegio de Abogados N° 45.782</div></div></td></tr></table></td></tr>
+<tr><td style="padding:10px 40px 20px;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td style="background-color:#fdf6f7;border:1px solid #e8c5ca;border-left:4px solid #8b1a2b;border-radius:0 4px 4px 0;padding:14px 18px;"><div style="font-size:11px;color:#1b2a4a;font-weight:700;margin-bottom:4px;">📋 DOCUMENTO AUTORIZADO</div><div style="font-size:11px;color:#555;line-height:1.6;">El presente documento ha sido revisado y autorizado por la Dirección Jurídica de TACAM, conforme a las disposiciones legales vigentes. Se certifica la veracidad de la información contenida.</div><div style="font-size:10px;color:#888;margin-top:6px;">Fecha de emisión: {$fechaHoy} · Folio: {$folioDocumento}</div></td></tr></table></td></tr>
+<tr><td style="background-color:#8b1a2b;height:4px;font-size:0;line-height:0;">&nbsp;</td></tr>
+<tr><td style="background-color:#1b2a4a;padding:20px 40px;text-align:center;border-radius:0 0 4px 4px;"><p style="margin:0;font-size:11px;color:#8899b3;line-height:1.6;">Este mensaje ha sido generado automáticamente por el sistema TACAM.<br>www.tacam.cl</p></td></tr>
+</table>
+</td></tr></table>
+</body>
+</html>
+HTML;
+}
+
 function build_email_html(string $toName, string $subject, string $textContent, string $templateType, array $templateData): string
 {
+    if ($templateType === 'gendarmeria_roster') {
+        return build_gendarmeria_roster_html($subject, $templateData);
+    }
+
     $safeToName = escape_html($toName);
     $safeSubject = escape_html($subject);
     $safeBody = nl2br(escape_html($textContent), false);
