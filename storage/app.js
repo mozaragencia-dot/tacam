@@ -2525,7 +2525,9 @@ function buildGendarmeriaTemplateData(visits) {
       numero: index + 1,
       hora: String(booking?.time || '--:--'),
       nombre: String(booking?.customer || '-'),
-      rut: String(booking?.rut || '-')
+      rut: String(booking?.rut || '-'),
+      modulo: String(booking?.prisonModule || booking?.representative?.modulo || '-'),
+      tiempo: String(booking?.notes || '30 minutos')
     }))
   };
 }

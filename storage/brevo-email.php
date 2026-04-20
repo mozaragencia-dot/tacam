@@ -22,26 +22,35 @@ function build_gendarmeria_roster_html(string $subject, array $templateData): st
 {
     $safeSubject = escape_html($subject);
     $fechaHoy = escape_html(trim((string)($templateData['fechaHoy'] ?? date('Y-m-d'))) ?: date('Y-m-d'));
-    $totalVisitas = escape_html(trim((string)($templateData['totalVisitas'] ?? '0')) ?: '0');
+    $totalVisitas = (int)($templateData['totalVisitas'] ?? 0);
     $folioDocumento = escape_html(trim((string)($templateData['folioDocumento'] ?? ('TAC-' . date('YmdHis')))) ?: ('TAC-' . date('YmdHis')));
-    $abogadaFirma = escape_html(trim((string)($templateData['abogadaFirma'] ?? '')));
+    $abogadaFirma = escape_html(trim((string)($templateData['abogadaFirma'] ?? 'Abogada TACAM')) ?: 'Abogada TACAM');
     $visits = $templateData['visits'] ?? [];
     if (!is_array($visits)) {
         $visits = [];
     }
 
-    $metaDate = escape_html(date('d/m/Y · H:i'));
-    $interviewTime = escape_html(trim((string)(($visits[0]['hora'] ?? '--:--'))) ?: '--:--');
-
+    $metaDate = escape_html(date('d/m/Y H:i'));
     $rowsHtml = '';
-    for ($i = 0; $i < 3; $i++) {
+    $rowCount = max(count($visits), 6);
+
+    for ($i = 0; $i < $rowCount; $i++) {
         $visit = $visits[$i] ?? [];
-        $name = escape_html(trim((string)($visit['nombre'] ?? '')));
+        $numero = escape_html((string)($visit['numero'] ?? ($i + 1)));
+        $hora = escape_html(trim((string)($visit['hora'] ?? '--:--')) ?: '--:--');
+        $nombre = escape_html(trim((string)($visit['nombre'] ?? '')));
         $rut = escape_html(trim((string)($visit['rut'] ?? '')));
+        $modulo = escape_html(trim((string)($visit['modulo'] ?? '-')) ?: '-');
+        $tiempo = escape_html(trim((string)($visit['tiempo'] ?? '30 minutos')) ?: '30 minutos');
+
         $rowsHtml .= '<tr>'
-            . '<td class="name">' . $name . '</td>'
-            . '<td class="rut">' . $rut . '</td>'
-            . '<td class="fill"></td><td class="fill"></td><td class="fill"></td>'
+            . '<td style="padding:10px;border:1px solid #cbd5e1;text-align:center;font-size:12px;">' . $numero . '</td>'
+            . '<td style="padding:10px;border:1px solid #cbd5e1;font-size:13px;font-weight:600;color:#0f172a;">' . $nombre . '</td>'
+            . '<td style="padding:10px;border:1px solid #cbd5e1;font-size:12px;color:#334155;">' . $rut . '</td>'
+            . '<td style="padding:10px;border:1px solid #cbd5e1;font-size:12px;text-align:center;">' . $hora . '</td>'
+            . '<td style="padding:10px;border:1px solid #cbd5e1;font-size:12px;text-align:center;">' . $modulo . '</td>'
+            . '<td style="padding:10px;border:1px solid #cbd5e1;font-size:12px;text-align:center;">' . $tiempo . '</td>'
+            . '<td style="padding:10px;border:1px solid #cbd5e1;font-size:12px;height:40px;">&nbsp;</td>'
             . '</tr>';
     }
 
@@ -49,136 +58,82 @@ function build_gendarmeria_roster_html(string $subject, array $templateData): st
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>{$safeSubject}</title>
-<style>
-  :root{
-    --ink:#0f172a;
-    --muted:#64748b;
-    --line:#e2e8f0;
-    --tacam-red:#b91c1c;
-    --tacam-red-dark:#7f1d1d;
-    --celeste:#e0f2fe;
-    --celeste-border:#7dd3fc;
-    --celeste-ink:#075985;
-    --bg:#f6f7fb;
-    --card:#ffffff;
-  }
-  *{box-sizing:border-box}
-  html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);
-    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Inter,sans-serif;
-    -webkit-font-smoothing:antialiased;}
-  .page{max-width:880px;margin:32px auto;background:var(--card);border-radius:18px;box-shadow:0 20px 60px -25px rgba(15,23,42,.25);overflow:hidden;}
-  .header-red{background:linear-gradient(135deg,var(--tacam-red),var(--tacam-red-dark));padding:28px 56px;display:flex;justify-content:space-between;align-items:center;color:#fff;}
-  .header-red .brand{display:flex;align-items:center;gap:18px}
-  .header-red .logo-img{height:64px;width:auto;display:block;filter:drop-shadow(0 4px 12px rgba(0,0,0,.25));}
-  .header-red .meta{text-align:right;font-size:13px;color:rgba(255,255,255,.85)}
-  .header-red .meta strong{display:block;color:#fff;font-size:14px;margin-bottom:2px}
-  .content{padding:36px 56px 48px}
-  h2.title{font-size:13px;letter-spacing:3px;text-transform:uppercase;color:var(--tacam-red);margin:0 0 8px;font-weight:700;}
-  .subtitle{font-size:24px;font-weight:700;margin:0 0 22px;line-height:1.25;color:var(--ink)}
-  .info-line{display:flex;justify-content:space-between;gap:24px;flex-wrap:wrap;background:var(--celeste);border:1px solid var(--celeste-border);border-left:5px solid var(--celeste-ink);border-radius:10px;padding:14px 20px;margin-bottom:24px;}
-  .info-line div{font-size:13px;flex:1;min-width:140px}
-  .info-line span{display:block;font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:var(--celeste-ink);font-weight:700;margin-bottom:2px}
-  .info-line strong{font-weight:600;color:var(--ink)}
-  .signature-line{margin-top:8px;margin-bottom:14px;border-bottom:1.5px solid var(--ink);width:280px;height:48px;}
-  .body-text{font-size:14px;line-height:1.65;color:#334155;margin:0 0 24px}
-  .body-text b{color:var(--ink)}
-  table{width:100%;border-collapse:separate;border-spacing:0;border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:32px;font-size:13px;}
-  thead th{background:var(--tacam-red);color:#fff;text-align:left;padding:12px 14px;font-size:11px;letter-spacing:2px;text-transform:uppercase;font-weight:600;}
-  tbody td{padding:16px 14px;border-top:1px solid var(--line);vertical-align:middle;height:64px;}
-  tbody tr:nth-child(even) td{background:#fafbfc}
-  td.name{font-weight:600;color:var(--ink);width:26%}
-  td.rut{color:#475569;width:18%;font-variant-numeric:tabular-nums}
-  td.fill{color:transparent}
-  tr.empty td{height:64px}
-  tr.gendarmeria td{background:#f1f5f9 !important;height:90px;font-weight:700;letter-spacing:2px;color:var(--tacam-red);font-size:12px;}
-  footer{display:flex;justify-content:space-between;align-items:flex-end;border-top:1px solid var(--line);padding-top:24px;margin-top:8px;gap:24px;}
-  .signature .greet{font-size:13px;color:var(--muted);margin-bottom:18px}
-  .sig-name{font-weight:700;font-size:15px;color:var(--ink);letter-spacing:.5px}
-  .sig-name span{color:var(--tacam-red);font-weight:500;margin-left:6px}
-  .contact{font-size:12px;color:var(--muted);margin-top:8px;line-height:1.6}
-  .contact b{color:var(--ink);font-weight:600}
-  .footer-logo{background:var(--tacam-red);padding:10px 16px;border-radius:10px;display:flex;align-items:center;}
-  .footer-logo img{height:34px;display:block}
-  .badge{display:inline-block;background:#fee2e2;color:var(--tacam-red);padding:4px 12px;border-radius:999px;font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;}
-  @media print{body{background:#fff}.page{box-shadow:none;margin:0;border-radius:0;max-width:100%}.header-red{-webkit-print-color-adjust:exact;print-color-adjust:exact}thead th{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
-</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>{$safeSubject}</title>
 </head>
-<body>
-  <div class="page">
-    <div class="header-red">
-      <div class="brand">
-        <img src="https://tacam.cl/wp-content/uploads/2023/11/logo-tacam-1-registrad-blancoo_.png" alt="TACAM Estudio Jurídico" class="logo-img"/>
-      </div>
-      <div class="meta">
-        <strong>estudiojuridico@tacam.cl</strong>
-        {$metaDate}
-      </div>
-    </div>
-
-    <div class="content">
-      <span class="badge">Entrevista Abogada</span>
-      <h2 class="title">Solicitud de visita presencial</h2>
-      <p class="subtitle">Antofagasta</p>
-
-      <div class="info-line">
-        <div><span>Ciudad</span><strong>Antofagasta</strong></div>
-        <div><span>Fecha de visita</span><strong>{$fechaHoy}</strong></div>
-        <div><span>Hora de entrevista</span><strong>{$interviewTime}</strong></div>
-      </div>
-
-      <p class="body-text">
-        <b>De mi consideración:</b><br/>
-        La abogada <b>{$abogadaFirma}</b>, cédula de identidad,
-        por este acto viene a solicitar coordinar
-        visita presencial con los internos que se indican a continuación,
-        en el horario de entrevista señalado.
-      </p>
-
-      <table>
-        <thead>
+<body style="margin:0;padding:0;background:#f3f4f6;font-family:Arial,'Segoe UI',sans-serif;color:#0f172a;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f3f4f6;padding:20px 0;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="820" cellpadding="0" cellspacing="0" style="width:820px;max-width:98%;background:#ffffff;border:1px solid #d1d5db;border-radius:10px;overflow:hidden;">
           <tr>
-            <th>Nombre</th>
-            <th>RUT</th>
-            <th>Módulo</th>
-            <th>Tiempo</th>
-            <th>Firma</th>
+            <td style="background:#b32025;padding:18px 24px;text-align:center;">
+              <img src="https://tacam.cl/wp-content/uploads/2023/11/logo-tacam-1-registrad-blancoo_.png" alt="TACAM" style="height:52px;display:block;margin:0 auto;" />
+            </td>
           </tr>
-        </thead>
-        <tbody>
-          {$rowsHtml}
-          <tr class="empty"><td class="fill"></td><td class="fill"></td><td class="fill"></td><td class="fill"></td><td class="fill"></td></tr>
-          <tr class="empty"><td class="fill"></td><td class="fill"></td><td class="fill"></td><td class="fill"></td><td class="fill"></td></tr>
-          <tr class="empty"><td class="fill"></td><td class="fill"></td><td class="fill"></td><td class="fill"></td><td class="fill"></td></tr>
-          <tr class="gendarmeria">
-            <td>Gendarmería</td>
-            <td class="fill"></td><td class="fill"></td><td class="fill"></td><td class="fill"></td>
+          <tr>
+            <td style="padding:20px 24px 6px;">
+              <div style="font-size:11px;letter-spacing:1.8px;color:#b32025;font-weight:700;text-transform:uppercase;">Planilla de Visita Presencial</div>
+              <h1 style="margin:6px 0 4px;font-size:22px;line-height:1.2;color:#111827;">Envío a Gendarmería</h1>
+              <p style="margin:0;color:#4b5563;font-size:13px;">Formato oficial TACAM · {$metaDate}</p>
+            </td>
           </tr>
-        </tbody>
-      </table>
-
-      <footer>
-        <div class="signature">
-          <div class="greet">Saludos cordiales,</div>
-          <div class="signature-line"></div>
-          <div class="sig-name">{$abogadaFirma} <span>| Abogada</span></div>
-          <div class="contact">
-            <b>Teléfono:</b> +569 8466 5254<br/>
-            <b>Ubicación:</b> Jorge Washington 2675, Of. 1003
-          </div>
-        </div>
-        <div class="footer-logo">
-          <img src="https://tacam.cl/wp-content/uploads/2023/11/logo-tacam-1-registrad-blancoo_.png" alt="TACAM"/>
-        </div>
-      </footer>
-    </div>
-  </div>
+          <tr>
+            <td style="padding:10px 24px 14px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #bae6fd;background:#eff6ff;border-radius:8px;">
+                <tr>
+                  <td style="padding:10px 12px;font-size:12px;"><strong style="display:block;color:#0369a1;font-size:10px;text-transform:uppercase;letter-spacing:1px;">Fecha visita</strong>{$fechaHoy}</td>
+                  <td style="padding:10px 12px;font-size:12px;"><strong style="display:block;color:#0369a1;font-size:10px;text-transform:uppercase;letter-spacing:1px;">Total internos</strong>{$totalVisitas}</td>
+                  <td style="padding:10px 12px;font-size:12px;"><strong style="display:block;color:#0369a1;font-size:10px;text-transform:uppercase;letter-spacing:1px;">Folio</strong>{$folioDocumento}</td>
+                  <td style="padding:10px 12px;font-size:12px;"><strong style="display:block;color:#0369a1;font-size:10px;text-transform:uppercase;letter-spacing:1px;">Abogada</strong>{$abogadaFirma}</td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:0 24px 22px;">
+              <p style="margin:0 0 10px;font-size:13px;color:#1f2937;line-height:1.45;">De mi consideración, se solicita autorización de ingreso para visita presencial a los internos detallados a continuación, respetando el orden y estructura de planilla enviada.</p>
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;border:1px solid #cbd5e1;">
+                <thead>
+                  <tr>
+                    <th style="padding:10px;border:1px solid #cbd5e1;background:#b32025;color:#ffffff;font-size:11px;letter-spacing:1px;text-transform:uppercase;">#</th>
+                    <th style="padding:10px;border:1px solid #cbd5e1;background:#b32025;color:#ffffff;font-size:11px;letter-spacing:1px;text-transform:uppercase;">Nombre interno/a</th>
+                    <th style="padding:10px;border:1px solid #cbd5e1;background:#b32025;color:#ffffff;font-size:11px;letter-spacing:1px;text-transform:uppercase;">RUT</th>
+                    <th style="padding:10px;border:1px solid #cbd5e1;background:#b32025;color:#ffffff;font-size:11px;letter-spacing:1px;text-transform:uppercase;">Hora</th>
+                    <th style="padding:10px;border:1px solid #cbd5e1;background:#b32025;color:#ffffff;font-size:11px;letter-spacing:1px;text-transform:uppercase;">Módulo</th>
+                    <th style="padding:10px;border:1px solid #cbd5e1;background:#b32025;color:#ffffff;font-size:11px;letter-spacing:1px;text-transform:uppercase;">Tiempo visita</th>
+                    <th style="padding:10px;border:1px solid #cbd5e1;background:#b32025;color:#ffffff;font-size:11px;letter-spacing:1px;text-transform:uppercase;">Firma gendarmería</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {$rowsHtml}
+                </tbody>
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:0 24px 24px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td style="padding-top:8px;border-top:1px solid #d1d5db;font-size:13px;color:#374151;line-height:1.5;">
+                    <strong style="color:#111827;">{$abogadaFirma}</strong><br/>
+                    Estudio Jurídico TACAM · Antofagasta<br/>
+                    <span style="color:#6b7280;">Correo: estudiojuridico@tacam.cl</span>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
 </body>
 </html>
 HTML;
 }
+
 
 function build_email_html(string $toName, string $subject, string $textContent, string $templateType, array $templateData): string
 {
