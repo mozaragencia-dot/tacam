@@ -34,6 +34,49 @@ const OFFICIAL_LAWYERS = [
   { name: 'DIANDRA ARACENA MORA',              rut: '15.981.484-K',  specialty: 'Penal',                              email: 'daracena@tacam.cl',  phone: '', photo: 'assets/logo-color.svg' }
 ];
 
+const PRELOADED_PRISON_CLIENTS = [
+  { name: 'SEBASTIAN IGNACIO AGUIRRE PIÑONES', rut: '21.028.523-7', modulo: '' },
+  { name: 'HUGO VICENCIO PEÑA', rut: '18.790.211-8', modulo: '' },
+  { name: 'MAO FRANCISCO RODRÍGUEZ VALVERDE', rut: '25.040.854-4', modulo: '' },
+  { name: 'MARCOS RONALDO CONTRERAS CARRILLO', rut: '22697616', modulo: '' },
+  { name: 'BORIS WILSON JIMENEZ DONOSO', rut: '69.479.08-1', modulo: '' },
+  { name: 'CRISTIAN ALEJANDRO CARDONA CHICAIZA', rut: '', modulo: '' },
+  { name: 'NIBALDO ROJAS CASTILLO', rut: '', modulo: '' },
+  { name: 'ESTHER RAMOS CRUZ', rut: '27.543.353-5', modulo: '' },
+  { name: 'CRISTIAN FERNANDO LOPEZ MAYO', rut: '26.050081-3', modulo: '' },
+  { name: 'CARMEN MARISCAL CLAROS', rut: '', modulo: '' },
+  { name: 'EVELIN ANDREA GALLOSO NAVARRO', rut: '14.106.430-6', modulo: '' },
+  { name: 'KATHERINE DAYANA RAMIREZ QUINTERO', rut: '', modulo: '' },
+  { name: 'MIGUEL AVENDAÑO MALDONADO', rut: '19.397.642-5', modulo: '' },
+  { name: 'ALVARO GIMENEZ GONZALEZ', rut: '21.201.806-6', modulo: '' },
+  { name: 'SCARLETT LISET CAUTÍN PERES', rut: '', modulo: '' },
+  { name: 'YEFERSON STIVEN CHACON VILLALOBOS', rut: '', modulo: 'TALTAL' },
+  { name: 'RAFAEL ANGEL MACHADO NARANJO', rut: '28.219.948-3', modulo: '' },
+  { name: 'RAUL DODDIS PERALTA', rut: '', modulo: '' },
+  { name: 'ANGELY PAOLA SALAZAR GUERRERO', rut: '16.438.072-6', modulo: '' },
+  { name: 'NICOLAS ANDRES DIAZ GUERRERO', rut: '21.090.473-0', modulo: '' },
+  { name: 'JERITZON ALFREDO PEREZ MOLINA', rut: '', modulo: '' },
+  { name: 'BAYRON ALEXANDER OYARCE LEAL', rut: '20.545.290-7', modulo: '' },
+  { name: 'SALOME DAVME CARRASCO', rut: '', modulo: '' },
+  { name: 'DAYRON RENTERIA HURTADO', rut: '', modulo: '' },
+  { name: 'KARINA VALVERDE CAICEDO', rut: '28.274.082-6', modulo: '' },
+  { name: 'WILSON ARGENIS MALDONADO SALAS', rut: '14.953.103-3', modulo: '' },
+  { name: 'ALEJANDRO IGNACIO SANHUEZA PANTA', rut: '21.937.839-4', modulo: '' },
+  { name: 'DYLAN DIAZ DIAZ', rut: '20.905.366-7', modulo: '' },
+  { name: 'MILTON GUERRA RAMÍREZ', rut: '28.483.256-6', modulo: '' },
+  { name: 'JONATHAN PARRA MARQUEZ', rut: '', modulo: '' },
+  { name: 'ROBERT ALEXANDER LINARES', rut: '14.887.560-K', modulo: '' },
+  { name: 'JEIMY VERONICA ALISTE GALLEGOS', rut: '19.104.070-8', modulo: '' },
+  { name: 'JHONSON CAÑAR URBANO', rut: '25.378.621-3', modulo: '' },
+  { name: 'ARNOL JOSE JARAMILLO GAITAN', rut: '23.939.734-9', modulo: '' },
+  { name: 'MIGUEL CHAVEZ VALENCIA', rut: '24.207.593-5', modulo: '46' },
+  { name: 'MARIA COROMOTO GUTIERREZ', rut: '21.790.563-K', modulo: '' },
+  { name: 'JOSUE DANIEL HERNÁNDEZ LÓPEZ', rut: '', modulo: 'TALTAL' },
+  { name: 'FREINY JOSE PARRA CHAVEZ', rut: '', modulo: 'TALTAL' },
+  { name: 'MARÍA JOSÉ HERNÁNDEZ GUERRERO', rut: '19.966.967-2', modulo: '' },
+  { name: 'CARLOS ANGULO CARABALÍ', rut: '28.464.515-4', modulo: '' }
+];
+
 // ─── Utilidades de almacenamiento local ──────────────────────────────────────
 
 function loadJson(key, fallback) {
@@ -60,6 +103,62 @@ function saveJson(key, value) {
  */
 function saveJsonLocal(key, value) {
   localStorage.setItem(key, JSON.stringify(value));
+}
+
+function normalizeSeedKey(value) {
+  return String(value || '').trim().toLowerCase();
+}
+
+function ensurePreloadedPrisonClients() {
+  const clients = loadJson(STORAGE_KEYS.clients, []);
+  if (!Array.isArray(clients)) return;
+
+  const byRut = new Map(clients.map(client => [normalizeSeedKey(client.rut), client]).filter(([rut]) => rut));
+  const byName = new Map(clients.map(client => [normalizeSeedKey(client.name), client]).filter(([name]) => name));
+  let changed = false;
+
+  PRELOADED_PRISON_CLIENTS.forEach(entry => {
+    const rutKey = normalizeSeedKey(entry.rut);
+    const nameKey = normalizeSeedKey(entry.name);
+    const existing = (rutKey && byRut.get(rutKey)) || byName.get(nameKey) || null;
+    const modulo = String(entry.modulo || '').trim();
+
+    if (existing) {
+      existing.name = String(entry.name || existing.name || '').trim();
+      if (rutKey && !String(existing.rut || '').trim()) existing.rut = entry.rut;
+      existing.inPrison = true;
+      existing.imputadoStatus = 'imputado';
+      if (modulo) {
+        existing.prisonModule = modulo;
+        existing.imputadoModule = modulo;
+      }
+      existing.updatedAt = new Date().toISOString();
+      changed = true;
+      return;
+    }
+
+    const created = {
+      id: crypto.randomUUID(),
+      name: String(entry.name || '').trim(),
+      rut: String(entry.rut || '').trim(),
+      phone: '',
+      email: '',
+      address: '',
+      inPrison: true,
+      imputadoStatus: 'imputado',
+      imputadoModule: modulo,
+      prisonModule: modulo,
+      representative: null,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    clients.unshift(created);
+    if (rutKey) byRut.set(rutKey, created);
+    byName.set(nameKey, created);
+    changed = true;
+  });
+
+  if (changed) saveJsonLocal(STORAGE_KEYS.clients, clients);
 }
 
 // ─── Indicador de sincronización ─────────────────────────────────────────────
@@ -254,6 +353,7 @@ function seedData() {
     }));
     saveJsonLocal(STORAGE_KEYS.clients, normalizedClients);
   }
+  ensurePreloadedPrisonClients();
 
   // ── Reservas ──
   const clients  = loadJson(STORAGE_KEYS.clients, []);
@@ -392,10 +492,34 @@ function syncLawyersData() {
 // ─── API pública de acceso a datos ───────────────────────────────────────────
 
 function getBookings()         { return loadJson(STORAGE_KEYS.bookings, []); }
-function saveBookings(b)       { saveJson(STORAGE_KEYS.bookings, b); }
+function saveBookings(b)       {
+  const now = new Date().toISOString();
+  const normalized = Array.isArray(b) ? b.map(item => {
+    const record = item && typeof item === 'object' ? { ...item } : item;
+    if (record && typeof record === 'object') {
+      if (!record.id) record.id = crypto.randomUUID();
+      if (!record.createdAt) record.createdAt = now;
+      record.updatedAt = record.updatedAt || now;
+    }
+    return record;
+  }) : [];
+  saveJson(STORAGE_KEYS.bookings, normalized);
+}
 
 function getClients()          { return loadJson(STORAGE_KEYS.clients, []); }
-function saveClients(c)        { saveJson(STORAGE_KEYS.clients, c); }
+function saveClients(c)        {
+  const now = new Date().toISOString();
+  const normalized = Array.isArray(c) ? c.map(item => {
+    const record = item && typeof item === 'object' ? { ...item } : item;
+    if (record && typeof record === 'object') {
+      if (!record.id) record.id = crypto.randomUUID();
+      if (!record.createdAt) record.createdAt = now;
+      record.updatedAt = record.updatedAt || now;
+    }
+    return record;
+  }) : [];
+  saveJson(STORAGE_KEYS.clients, normalized);
+}
 
 function getLawyers()          { return loadJson(STORAGE_KEYS.lawyers, []); }
 function saveLawyers(l)        { saveJson(STORAGE_KEYS.lawyers, l); }
