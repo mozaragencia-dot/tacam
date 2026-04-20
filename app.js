@@ -2603,15 +2603,39 @@ function buildGendarmeriaPreviewHtml(visits, subject, recipients) {
 }
 
 function openGendarmeriaPreview(visits, subject, recipients) {
-  const previewWindow = window.open('', '_blank', 'noopener,noreferrer,width=1080,height=760');
+  const previewHtml = buildGendarmeriaPreviewHtml(visits, subject, recipients);
+  const previewWindow = window.open('about:blank', '_blank', 'width=1080,height=760');
+
   if (!previewWindow) {
     showToast('No se pudo abrir la previsualización (bloqueador de ventanas).');
     return false;
   }
-  previewWindow.document.open();
-  previewWindow.document.write(buildGendarmeriaPreviewHtml(visits, subject, recipients));
-  previewWindow.document.close();
-  return true;
+
+  try {
+    previewWindow.document.open();
+    previewWindow.document.write(previewHtml);
+    previewWindow.document.close();
+    previewWindow.focus();
+    return true;
+  } catch (error) {
+    console.error('No se pudo renderizar la previsualización en ventana directa.', error);
+  }
+
+  try {
+    const blob = new Blob([previewHtml], { type: 'text/html;charset=utf-8' });
+    const blobUrl = URL.createObjectURL(blob);
+    const blobWindow = window.open(blobUrl, '_blank');
+    if (blobWindow) {
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
+      return true;
+    }
+    URL.revokeObjectURL(blobUrl);
+  } catch (error) {
+    console.error('No se pudo abrir la previsualización mediante Blob URL.', error);
+  }
+
+  showToast('No se pudo mostrar la previsualización del correo.');
+  return false;
 }
 
 async function sendGendarmeriaRoster(visits, subject, options = {}) {
