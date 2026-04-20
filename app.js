@@ -32,6 +32,7 @@ const prisonLawyerFilter = document.getElementById('prison-lawyer-filter');
 const sendGendarmeriaEmailBtn = document.getElementById('send-gendarmeria-email');
 const gendarmeriaVisitSelect = document.getElementById('gendarmeria-visit-select');
 const previewGendarmeriaEmailBtn = document.getElementById('preview-gendarmeria-email');
+const gendarmeriaTestEmailInput = document.getElementById('gendarmeria-test-email');
 const prisonCalendar = document.getElementById('prison-calendar');
 const prisonCalendarLegend = document.getElementById('prison-calendar-legend');
 const prisonVisitsBody = document.getElementById('prison-visits-body');
@@ -2552,8 +2553,16 @@ function getGendarmeriaRecipients() {
     .filter(input => input instanceof HTMLInputElement && input.checked)
     .map(input => String(input.value || '').trim())
     .filter(Boolean);
-  if (checked.length) return [...new Set(checked)];
-  return GENDARMERIA_RECIPIENTS.map(item => item.email);
+
+  const testEmailRaw = String(gendarmeriaTestEmailInput?.value || '').trim();
+  const testEmail = testEmailRaw.toLowerCase();
+  const hasTestEmail = !!testEmail;
+  const isValidTestEmail = !hasTestEmail || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(testEmail);
+
+  return {
+    recipients: [...new Set([...(checked.length ? checked : GENDARMERIA_RECIPIENTS.map(item => item.email)), ...(isValidTestEmail && hasTestEmail ? [testEmail] : [])])],
+    hasInvalidTestEmail: hasTestEmail && !isValidTestEmail
+  };
 }
 
 function buildGendarmeriaPreviewHtml(visits, subject, recipients) {
@@ -2639,7 +2648,12 @@ function openGendarmeriaPreview(visits, subject, recipients) {
 
 async function sendGendarmeriaRoster(visits, subject, options = {}) {
   const { silentMissingRecipients = false } = options;
-  const recipients = getGendarmeriaRecipients();
+  const { recipients, hasInvalidTestEmail } = getGendarmeriaRecipients();
+  if (hasInvalidTestEmail) {
+    if (!silentMissingRecipients) showToast('Correo de prueba inválido. Revisa el formato.');
+    gendarmeriaTestEmailInput?.focus();
+    return false;
+  }
   if (!recipients.length) {
     if (!silentMissingRecipients) showToast('Ingresa al menos un correo de Gendarmería.');
     return false;
