@@ -36,6 +36,7 @@ const gendarmeriaTestEmailInput = document.getElementById('gendarmeria-test-emai
 const prisonCalendar = document.getElementById('prison-calendar');
 const prisonCalendarLegend = document.getElementById('prison-calendar-legend');
 const prisonVisitsBody = document.getElementById('prison-visits-body');
+const prisonVisitedSection = document.getElementById('prison-visited-section');
 const prisonBookingForm = document.getElementById('prison-booking-form');
 const lawyerForm = document.getElementById('lawyer-form');
 const lawyerList = document.getElementById('lawyer-list');
@@ -2728,12 +2729,31 @@ function renderPrisonCalendar() {
   renderCalendar(prisonCalendar, bookings, selectedMonth);
 }
 
+function formatVisitDurationMinutes(totalMinutes) {
+  const parsed = Number(totalMinutes || 0);
+  if (!Number.isFinite(parsed) || parsed <= 0) return '';
+  const minutes = Math.max(0, Math.round(parsed));
+  const hoursPart = Math.floor(minutes / 60);
+  const minutesPart = minutes % 60;
+  const parts = [];
+  if (hoursPart) parts.push(`${hoursPart}h`);
+  if (minutesPart) parts.push(`${minutesPart}m`);
+  return parts.join(' ');
+}
+
 function renderPrisonVisitsList() {
   const role = getCurrentSessionRole();
   const sessionLawyer = getCurrentSessionLawyerName();
   const filterValue = role === 'Abogada' && sessionLawyer ? sessionLawyer : String(prisonLawyerFilter.value || '').trim();
   if (role === 'Abogada' && sessionLawyer) prisonLawyerFilter.value = sessionLawyer;
   const visits = getFilteredPrisonVisitsForReport().filter(booking => !filterValue || booking.assignedTo === filterValue);
+
+  if (prisonVisitedSection) prisonVisitedSection.hidden = role === 'Abogada';
+  if (role === 'Abogada') {
+    renderGendarmeriaVisitOptions();
+    prisonVisitsBody.replaceChildren();
+    return;
+  }
 
   renderGendarmeriaVisitOptions();
   prisonVisitsBody.replaceChildren();
@@ -2791,14 +2811,44 @@ function renderPrisonVisitsList() {
     attendanceCell.appendChild(noBtn);
     row.appendChild(attendanceCell);
 
-    const checkInCell = document.createElement('td');
-    const checkInBtn = document.createElement('button');
-    checkInBtn.className = 'switch-btn primary';
-    checkInBtn.dataset.prisonCheckin = booking.id;
-    checkInBtn.textContent = booking.checkedInAt ? `Check-in asistente ${fmtDate(booking.checkedInAt)}` : 'Registrar check-in asistente';
-    checkInBtn.disabled = Boolean(booking.checkedInAt);
-    checkInCell.appendChild(checkInBtn);
-    row.appendChild(checkInCell);
+    const durationCell = document.createElement('td');
+    const currentDuration = Number(booking.visitDurationMinutes || 0);
+    const durationWrap = document.createElement('div');
+    durationWrap.className = 'inline-duration';
+
+    const hoursInput = document.createElement('input');
+    hoursInput.type = 'number';
+    hoursInput.min = '0';
+    hoursInput.step = '1';
+    hoursInput.placeholder = 'h';
+    hoursInput.value = currentDuration > 0 ? String(Math.floor(currentDuration / 60)) : '';
+    hoursInput.dataset.prisonDurationHours = booking.id;
+
+    const minutesInput = document.createElement('input');
+    minutesInput.type = 'number';
+    minutesInput.min = '0';
+    minutesInput.max = '59';
+    minutesInput.step = '1';
+    minutesInput.placeholder = 'm';
+    minutesInput.value = currentDuration > 0 ? String(currentDuration % 60) : '';
+    minutesInput.dataset.prisonDurationMinutes = booking.id;
+
+    const saveDurationBtn = document.createElement('button');
+    saveDurationBtn.type = 'button';
+    saveDurationBtn.className = 'switch-btn';
+    saveDurationBtn.dataset.prisonDurationSave = booking.id;
+    saveDurationBtn.textContent = 'Guardar';
+
+    durationWrap.append(hoursInput, minutesInput, saveDurationBtn);
+
+    const durationLabel = document.createElement('div');
+    durationLabel.className = 'muted';
+    durationLabel.style.marginTop = '6px';
+    durationLabel.style.fontSize = '12px';
+    durationLabel.textContent = currentDuration > 0 ? `Actual: ${formatVisitDurationMinutes(currentDuration)}` : 'Sin duración registrada';
+
+    durationCell.append(durationWrap, durationLabel);
+    row.appendChild(durationCell);
 
     const reminderCell = document.createElement('td');
     const reminderBtn = document.createElement('button');
@@ -2811,18 +2861,22 @@ function renderPrisonVisitsList() {
     prisonVisitsBody.appendChild(row);
   });
 
-  prisonVisitsBody.querySelectorAll('[data-prison-checkin]').forEach(btn => {
-    btn.onclick = async () => {
-      const bookingId = btn.dataset.prisonCheckin;
+  prisonVisitsBody.querySelectorAll('[data-prison-duration-save]').forEach(btn => {
+    btn.onclick = () => {
+      const bookingId = btn.dataset.prisonDurationSave;
+      const hoursInput = prisonVisitsBody.querySelector(`[data-prison-duration-hours="${bookingId}"]`);
+      const minutesInput = prisonVisitsBody.querySelector(`[data-prison-duration-minutes="${bookingId}"]`);
+      const hours = Number((hoursInput instanceof HTMLInputElement ? hoursInput.value : '0') || 0);
+      const minutes = Number((minutesInput instanceof HTMLInputElement ? minutesInput.value : '0') || 0);
+      const safeHours = Number.isFinite(hours) ? Math.max(0, Math.floor(hours)) : 0;
+      const safeMinutes = Number.isFinite(minutes) ? Math.max(0, Math.min(59, Math.floor(minutes))) : 0;
+      const totalMinutes = (safeHours * 60) + safeMinutes;
+
       updateBooking(bookingId, booking => {
-        booking.checkedInAt = new Date().toISOString();
-        booking.status = booking.status === 'nueva' ? 'confirmada' : booking.status;
+        booking.visitDurationMinutes = totalMinutes;
       });
 
-      const updatedBooking = getBookings().find(item => item.id === bookingId);
-      if (updatedBooking) {
-        await notifyBookingChannels(updatedBooking, buildPrisonCheckInMessage(updatedBooking), 'TACAM: check-in asistente visita a la cárcel');
-      }
+      showToast(totalMinutes > 0 ? `Duración guardada: ${formatVisitDurationMinutes(totalMinutes)}` : 'Duración de visita eliminada.');
     };
   });
 

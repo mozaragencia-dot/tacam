@@ -490,3 +490,15 @@ th {
 
 
 #remarketing-email-all { min-width: 220px; }
+
+
+.inline-duration {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.inline-duration input {
+  width: 56px;
+  min-width: 56px;
+}
