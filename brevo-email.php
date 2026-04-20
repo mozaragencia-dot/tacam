@@ -134,9 +134,13 @@ function build_gendarmeria_roster_html(string $subject, array $templateData): st
           <div style="font-weight:700;font-size:15px;color:#0f172a;letter-spacing:.5px;">{$signatureName} <span style="color:#b91c1c;font-weight:500;margin-left:6px;">| Abogada</span></div>
           <div style="font-size:12px;color:#64748b;margin-top:8px;line-height:1.6;"><b style="color:#0f172a;font-weight:600;">Ubicación:</b> Jorge Washington 2675, Of. 1003</div>
         </div>
-        <div style="background:#b91c1c;padding:10px 16px;border-radius:10px;display:flex;align-items:center;"><img src="https://tacam.cl/wp-content/uploads/2023/11/logo-tacam-1-registrad-blancoo_.png" alt="TACAM" style="height:34px;display:block"/></div>
+        <div style="background:#b91c1c;padding:4px 8px;border-radius:6px;display:flex;align-items:center;"><img src="https://tacam.cl/wp-content/uploads/2023/11/logo-tacam-1-registrad-blancoo_.png" alt="TACAM" style="height:28px;display:block"/></div>
       </div>
       <p style="margin:14px 0 0;color:#64748b;font-size:12px;">Total de visitas: {$totalVisitas}</p>
+      <div style="margin:16px 0 0;">
+        <a href="javascript:window.print();" style="display:inline-block;background:#b91c1c;color:#ffffff;text-decoration:none;padding:10px 14px;border-radius:8px;font-size:12px;font-weight:600;">Imprimir documento</a>
+        <div style="font-size:11px;color:#64748b;margin-top:6px;">Si el botón no funciona en su cliente de correo, use la opción Imprimir del navegador.</div>
+      </div>
     </div>
   </div>
 </body>

@@ -487,7 +487,6 @@ const GENDARMERIA_RECIPIENTS = [
   { email: 'Omar.sepulveda@gendarmeria.cl', label: 'Cárcel Hombre' },
   { email: 'tije.cpfantofagasta@gendarmeria.cl', label: 'Cárcel Mujeres' },
   { email: 'claudia.lizama@gendarmeria.cl', label: 'Cárcel Mujeres' },
-  { email: '7sarkham@gmail.com', label: 'Prueba personal' }
 ];
 const GENDARMERIA_CC_RECIPIENTS = [
   'administracion@tacam.cl',
