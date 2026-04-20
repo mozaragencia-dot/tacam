@@ -59,8 +59,8 @@
         <form id="client-form" class="grid">
           <label>Nombre de la persona <input name="name" required /></label>
           <label>RUT <input name="rut" required placeholder="12.345.678-9" maxlength="12" /></label>
-          <label>Teléfono <input name="phone" required placeholder="+56912345678" maxlength="12" /></label>
-          <label>Correo <input name="email" type="email" required placeholder="contacto@correo.com" /></label>
+          <label>Teléfono <input name="phone" placeholder="+56912345678" maxlength="12" /></label>
+          <label>Correo <input name="email" type="email" placeholder="contacto@correo.com" /></label>
           <label class="full">Dirección <input name="address" required placeholder="Calle, número, comuna..." /></label>
           <label>Situación
             <select name="imputadoStatus" required>
@@ -94,6 +94,7 @@
             <tbody id="clients-body"></tbody>
           </table>
         </div>
+        <button id="clients-show-more" type="button" class="switch-btn" hidden>Mostrar más</button>
 
         <h3>2) Agendar desde contactos guardados</h3>
         <form id="booking-form" class="grid">
@@ -130,7 +131,7 @@
           <label>Materia
             <select name="matter" required>
               <option value="">Seleccione materia</option>
-              <option value="Familiar">Familiar</option>
+              <option value="Familia">Familia</option>
               <option value="Penal">Penal</option>
               <option value="Policía local">Policía local</option>
             </select>
@@ -189,8 +190,8 @@
           </label>
           <label>Nombre <input name="name" required /></label>
           <label>RUT <input name="rut" required maxlength="12" /></label>
-          <label>Teléfono <input name="phone" required maxlength="12" /></label>
-          <label>Correo <input name="email" type="email" required /></label>
+          <label>Teléfono <input name="phone" maxlength="12" /></label>
+          <label>Correo <input name="email" type="email" /></label>
           <label class="full">Dirección <input name="address" required /></label>
           <label>Situación
             <select name="imputadoStatus" required>
@@ -226,6 +227,7 @@
             </select>
           </label>
           <button type="submit">Guardar cambios contacto</button>
+          <button id="delete-client-btn" type="button" class="switch-btn">Borrar contacto</button>
         </form>
       </section>
 
@@ -291,14 +293,6 @@
             <input id="prison-month" type="month" />
           </label>
         </div>
-        <div class="grid">
-          <label class="full" hidden>Correo Gendarmería 1
-            <input id="gendarmeria-email" type="email" readonly />
-          </label>
-          <label class="full" hidden>Correo Gendarmería 2
-            <input id="gendarmeria-email-2" type="email" readonly />
-          </label>
-        </div>
         <form id="prison-booking-form" class="grid">
           <label class="full">Buscar contacto
             <input id="prison-client-search" autocomplete="off" placeholder="Buscar por nombre, RUT, teléfono o módulo..." />
@@ -340,12 +334,16 @@
 
         <div class="gendarmeria-banner">
           <strong>Envío manual a Gendarmería</strong>
-          <p class="muted">Selecciona una visita agendada y envíala manualmente.</p>
+          <p class="muted">Se listan automáticamente las personas con visita para mañana. Puedes seleccionar una o varias para enviar manualmente.</p>
+          <div class="gendarmeria-recipients">
+            <p class="muted">Selecciona correos institucionales para este envío:</p>
+            <label><input type="checkbox" data-gendarmeria-recipient value="Omar.sepulveda@gendarmeria.cl" checked /> Omar.sepulveda@gendarmeria.cl (Cárcel Hombre)</label>
+            <label><input type="checkbox" data-gendarmeria-recipient value="tije.cpfantofagasta@gendarmeria.cl" checked /> tije.cpfantofagasta@gendarmeria.cl (Cárcel Mujeres)</label>
+            <label><input type="checkbox" data-gendarmeria-recipient value="claudia.lizama@gendarmeria.cl" checked /> claudia.lizama@gendarmeria.cl (Cárcel Mujeres)</label>
+          </div>
           <div class="gendarmeria-banner-actions">
-            <label class="full">Visita agendada
-              <select id="gendarmeria-visit-select">
-                <option value="">Seleccione una visita a la cárcel</option>
-              </select>
+            <label class="full">Visitas seleccionables
+              <select id="gendarmeria-visit-select" multiple size="7"></select>
             </label>
             <button id="send-gendarmeria-email" type="button">Enviar a Gendarmería</button>
           </div>
@@ -422,9 +420,8 @@
 
         <div class="report-grid">
           <article class="report-card">
-            <h3>General por estado</h3>
-            <canvas id="general-stats-chart" width="1200" height="420"></canvas>
-            <button type="button" class="print-chart-btn" data-print-chart="general-stats-chart">Imprimir gráfico</button>
+            <h3>Ranking de visitas a la cárcel por abogada</h3>
+            <div id="prison-lawyer-ranking" class="ranking-list-card"></div>
           </article>
           <article class="report-card">
             <h3>Atenciones por abogada</h3>
@@ -469,5 +466,12 @@
   <script src="app.js"></script>
   <script src="register-sw.js"></script>
   <div id="toast" class="toast" hidden aria-live="polite"></div>
+  <div id="save-popup" class="save-popup" hidden aria-live="polite" aria-atomic="true">
+    <div class="save-popup-card">
+      <strong>✅ Guardado</strong>
+      <p id="save-popup-message">Datos guardados correctamente.</p>
+      <button id="save-popup-ok" type="button" class="switch-btn primary">OK</button>
+    </div>
+  </div>
 </body>
 </html>
