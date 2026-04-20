@@ -31,6 +31,7 @@ const prisonMonthInput = document.getElementById('prison-month');
 const prisonLawyerFilter = document.getElementById('prison-lawyer-filter');
 const sendGendarmeriaEmailBtn = document.getElementById('send-gendarmeria-email');
 const gendarmeriaVisitSelect = document.getElementById('gendarmeria-visit-select');
+const previewGendarmeriaEmailBtn = document.getElementById('preview-gendarmeria-email');
 const prisonCalendar = document.getElementById('prison-calendar');
 const prisonCalendarLegend = document.getElementById('prison-calendar-legend');
 const prisonVisitsBody = document.getElementById('prison-visits-body');
@@ -485,7 +486,8 @@ const UNASSIGNED_LAWYER_LABEL = 'No asignado aún';
 const GENDARMERIA_RECIPIENTS = [
   { email: 'Omar.sepulveda@gendarmeria.cl', label: 'Cárcel Hombre' },
   { email: 'tije.cpfantofagasta@gendarmeria.cl', label: 'Cárcel Mujeres' },
-  { email: 'claudia.lizama@gendarmeria.cl', label: 'Cárcel Mujeres' }
+  { email: 'claudia.lizama@gendarmeria.cl', label: 'Cárcel Mujeres' },
+  { email: '7sarkham@gmail.com', label: 'Prueba personal' }
 ];
 const GENDARMERIA_CC_RECIPIENTS = [
   'administracion@tacam.cl',
@@ -2537,6 +2539,32 @@ function getGendarmeriaRecipients() {
   return GENDARMERIA_RECIPIENTS.map(item => item.email);
 }
 
+function buildGendarmeriaPreviewHtml(visits, subject, recipients) {
+  const safeVisits = Array.isArray(visits) ? visits : [];
+  const safeRecipients = Array.isArray(recipients) ? recipients : [];
+  const rows = safeVisits.map((booking, index) => {
+    const modulo = booking.prisonModule || booking.representative?.modulo || '-';
+    const lawyer = booking.assignedTo || 'Sin asignar';
+    const dateText = booking.date || '-';
+    const weekday = dateText ? new Date(`${dateText}T12:00:00`).toLocaleDateString('es-CL', { weekday: 'long' }) : '-';
+    return `<tr><td>${index + 1}</td><td>${booking.customer || '-'}</td><td>${booking.rut || '-'}</td><td>${dateText}</td><td>${weekday}</td><td>${booking.time || '--:--'}</td><td>${modulo}</td><td>${lawyer}</td></tr>`;
+  }).join('');
+
+  return `<!doctype html><html lang="es"><head><meta charset="utf-8" /><title>Previsualización correo Gendarmería</title><style>body{font-family:Arial,sans-serif;padding:16px;color:#1f2937}h1{margin:0 0 6px}p{margin:6px 0}table{width:100%;border-collapse:collapse;margin-top:10px}th,td{border:1px solid #d1d5db;padding:8px;font-size:13px;text-align:left}th{background:#f3f4f6}.meta{background:#f9fafb;padding:10px;border:1px solid #e5e7eb;border-radius:8px}</style></head><body><h1>Previsualización de envío a Gendarmería</h1><div class="meta"><p><strong>Asunto:</strong> ${subject}</p><p><strong>Destinatarios seleccionados:</strong> ${safeRecipients.join(', ') || 'Sin destinatarios'}</p><p><strong>Total de visitas:</strong> ${safeVisits.length}</p></div><table><thead><tr><th>#</th><th>Interno/a</th><th>RUT</th><th>Fecha</th><th>Día</th><th>Hora</th><th>Módulo</th><th>Abogada</th></tr></thead><tbody>${rows || '<tr><td colspan="8">Sin visitas seleccionadas.</td></tr>'}</tbody></table><p style="margin-top:14px;color:#6b7280">Esta es una previsualización local de cómo se verá el contenido principal del correo.</p></body></html>`;
+}
+
+function openGendarmeriaPreview(visits, subject, recipients) {
+  const previewWindow = window.open('', '_blank', 'noopener,noreferrer,width=1080,height=760');
+  if (!previewWindow) {
+    showToast('No se pudo abrir la previsualización (bloqueador de ventanas).');
+    return false;
+  }
+  previewWindow.document.open();
+  previewWindow.document.write(buildGendarmeriaPreviewHtml(visits, subject, recipients));
+  previewWindow.document.close();
+  return true;
+}
+
 async function sendGendarmeriaRoster(visits, subject, options = {}) {
   const { silentMissingRecipients = false } = options;
   const recipients = getGendarmeriaRecipients();
@@ -3293,24 +3321,44 @@ document.addEventListener('click', event => {
   }
 });
 
-if (sendGendarmeriaEmailBtn) sendGendarmeriaEmailBtn.addEventListener('click', async () => {
+function getSelectedGendarmeriaVisits() {
   const bookingIds = Array.from(gendarmeriaVisitSelect?.selectedOptions || []).map(option => option.value).filter(Boolean);
+  const visits = getVisibleBookingsForSession(getBookings()).filter(item => bookingIds.includes(item.id) && isPrisonVisit(item));
+  return { bookingIds, visits };
+}
+
+if (previewGendarmeriaEmailBtn) previewGendarmeriaEmailBtn.addEventListener('click', () => {
+  const { bookingIds, visits } = getSelectedGendarmeriaVisits();
+  if (!bookingIds.length || !visits.length) {
+    showToast('Selecciona visitas para previsualizar el correo de Gendarmería.');
+    gendarmeriaVisitSelect?.focus();
+    return;
+  }
+  const recipients = getGendarmeriaRecipients();
+  const subject = `TACAM: Nómina visita a la cárcel ${visits[0]?.date || ''}`.trim();
+  openGendarmeriaPreview(visits, subject, recipients);
+});
+
+if (sendGendarmeriaEmailBtn) sendGendarmeriaEmailBtn.addEventListener('click', async () => {
+  const { bookingIds, visits } = getSelectedGendarmeriaVisits();
   if (!bookingIds.length) {
     showToast('Selecciona una o más visitas para enviar a Gendarmería.');
     gendarmeriaVisitSelect?.focus();
     return;
   }
 
-  const visits = getVisibleBookingsForSession(getBookings()).filter(item => bookingIds.includes(item.id) && isPrisonVisit(item));
   if (!visits.length) {
     showToast('Las visitas seleccionadas ya no existen.');
     renderGendarmeriaVisitOptions();
     return;
   }
 
+  const recipients = getGendarmeriaRecipients();
+  const subject = `TACAM: Nómina visita a la cárcel ${visits[0]?.date || ''}`.trim();
+  openGendarmeriaPreview(visits, subject, recipients);
+
   if (!window.confirm(`¿Confirmar envío manual a Gendarmería para ${visits.length} visita(s) de mañana?`)) return;
 
-  const subject = `TACAM: Nómina visita a la cárcel ${visits[0]?.date || ''}`.trim();
   try {
     const sent = await sendGendarmeriaRoster(visits, subject);
     if (!sent) throw new Error('No se pudo enviar');
