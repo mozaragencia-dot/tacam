@@ -21,6 +21,7 @@ const selectedClientEmailInput = document.getElementById('selected-client-email'
 const selectedClientAddressInput = document.getElementById('selected-client-address');
 const clientEditForm = document.getElementById('client-edit-form');
 const clientEditSelect = document.getElementById('client-edit-select');
+const deleteClientBtn = document.getElementById('delete-client-btn');
 const bookingForm = document.getElementById('booking-form');
 const lawyerFilter = document.getElementById('lawyer-filter');
 const agendaMonthInput = document.getElementById('agenda-month');
@@ -28,10 +29,9 @@ const agendaCalendar = document.getElementById('agenda-calendar');
 const agendaLegend = document.getElementById('agenda-color-legend');
 const prisonMonthInput = document.getElementById('prison-month');
 const prisonLawyerFilter = document.getElementById('prison-lawyer-filter');
-const gendarmeriaEmailInput = document.getElementById('gendarmeria-email');
-const gendarmeriaEmail2Input = document.getElementById('gendarmeria-email-2');
 const sendGendarmeriaEmailBtn = document.getElementById('send-gendarmeria-email');
 const gendarmeriaVisitSelect = document.getElementById('gendarmeria-visit-select');
+const previewGendarmeriaEmailBtn = document.getElementById('preview-gendarmeria-email');
 const prisonCalendar = document.getElementById('prison-calendar');
 const prisonCalendarLegend = document.getElementById('prison-calendar-legend');
 const prisonVisitsBody = document.getElementById('prison-visits-body');
@@ -43,10 +43,8 @@ const lawyerCalendarMonth = document.getElementById('lawyer-calendar-month');
 const lawyerCalendar = document.getElementById('lawyer-calendar');
 const lawyerCalendarLegend = document.getElementById('lawyer-calendar-legend');
 const sharedOnlyInput = document.getElementById('shared-only');
-const generalStatsChart = document.getElementById('general-stats-chart');
-const lawyerStatsChart = document.getElementById('lawyer-stats-chart');
+const prisonLawyerRankingCard = document.getElementById('prison-lawyer-ranking');
 const prisonStatsChart = document.getElementById('prison-stats-chart');
-const lawyerRankingChart = document.getElementById('lawyer-ranking-chart');
 const prisonPersonChart = document.getElementById('prison-person-chart');
 const reportLawyerFilter = document.getElementById('report-lawyer-filter');
 const downloadGeneralReportBtn = document.getElementById('download-general-report');
@@ -58,6 +56,7 @@ const restoreBackupInput = document.getElementById('restore-backup-input');
 const printChartButtons = document.querySelectorAll('[data-print-chart]');
 const profileForm = document.getElementById('profile-form');
 const profileList = document.getElementById('profile-list');
+const profileShowMoreBtn = document.getElementById('profile-show-more');
 const clientSelect = document.getElementById('client-id-selected');
 const hiredLawyerInput = bookingForm.elements.hiredLawyer;
 const bookingImputadoStatusInput = bookingForm.elements.bookingImputadoStatus;
@@ -110,8 +109,27 @@ const assignedToSelect = bookingForm.elements.assignedTo;
 const moduleTabs = document.querySelectorAll('[data-module-tab]');
 const modulePanels = document.querySelectorAll('[data-module-panel]');
 const toast = document.getElementById('toast');
+const savePopup = document.getElementById('save-popup');
+const savePopupMessage = document.getElementById('save-popup-message');
+const savePopupOkBtn = document.getElementById('save-popup-ok');
 const syncIndicator = document.getElementById('sync-indicator');
+const clientsShowMoreBtn = document.getElementById('clients-show-more');
+const remarketingEmailAllBtn = document.getElementById('remarketing-email-all');
+const CLIENTS_PAGE_SIZE = 10;
+const PROFILE_PREVIEW_SIZE = 5;
+const APP_CONFIG = {
+  twilioEndpoint: 'twilio-whatsapp.php',
+  internalToken: String(
+    window.APP_CONFIG?.APP_INTERNAL_TOKEN
+    || window.__APP_INTERNAL_TOKEN
+    || localStorage.getItem('APP_INTERNAL_TOKEN')
+    || document.querySelector('meta[name=\"app-internal-token\"]')?.content
+    || ''
+  ).trim()
+};
 let toastTimer = null;
+let clientsVisibleLimit = CLIENTS_PAGE_SIZE;
+let profilesExpanded = false;
 
 function switchModule(moduleName) {
   moduleTabs.forEach(tab => {
@@ -123,14 +141,39 @@ function switchModule(moduleName) {
   });
 }
 
-function showToast(message) {
+function shouldShowSavePopup(message) {
+  const normalized = String(message || '').toLowerCase();
+  if (!normalized) return false;
+  if (normalized.includes('error') || normalized.includes('no se pudo') || normalized.includes('inválid')) return false;
+  return ['guardad', 'actualizad', 'enviad', 'agendad', 'borrad', 'confirmad'].some(token => normalized.includes(token));
+}
+
+function showSavePopup(message) {
+  if (!savePopup || !savePopupMessage) return;
+  savePopupMessage.textContent = String(message || 'Datos guardados correctamente.');
+  savePopup.hidden = false;
+}
+
+function showToast(message, options = {}) {
+  const text = String(message || 'Acción realizada');
+  const forcePopup = Boolean(options && options.forcePopup);
+  if (forcePopup || shouldShowSavePopup(text)) showSavePopup(text);
   if (!toast) return;
-  toast.textContent = String(message || 'Acción realizada');
+  toast.textContent = text;
   toast.hidden = false;
   if (toastTimer) clearTimeout(toastTimer);
   toastTimer = setTimeout(() => {
     toast.hidden = true;
   }, 2400);
+}
+
+function removeRequiredConstraints() {
+  document.querySelectorAll('[required]').forEach(field => {
+    if (field instanceof HTMLInputElement || field instanceof HTMLSelectElement || field instanceof HTMLTextAreaElement) {
+      field.required = false;
+      field.removeAttribute('required');
+    }
+  });
 }
 
 function playSaveChime() {
@@ -152,6 +195,7 @@ function playSaveChime() {
   } catch (error) {
     // ignore audio limitations on some browsers/environments
   }
+  showSavePopup('✅ Datos guardados correctamente. Presiona OK para continuar.');
 }
 
 function updateSyncIndicator(status = 'pending', message = 'Sincronización: pendiente', at = '') {
@@ -298,7 +342,7 @@ function updateRepresentativeVisibility() {
     field.hidden = !isImputado;
     const input = field.querySelector('input');
     if (input) {
-      input.required = isImputado && (input.name === 'representativeName' || input.name === 'representativeLastName');
+      input.required = false;
       if (!isImputado) input.value = '';
     }
   });
@@ -312,7 +356,7 @@ function updateImputadoModuleVisibility() {
     field.hidden = !isImputado;
     const input = field.querySelector('input');
     if (input) {
-      input.required = isImputado;
+      input.required = false;
       if (!isImputado) input.value = '';
     }
   });
@@ -329,7 +373,7 @@ function updateEditRepresentativeVisibility() {
     field.hidden = !isImputado;
     const input = field.querySelector('input');
     if (input) {
-      input.required = isImputado && (input.name === 'representativeName' || input.name === 'representativeLastName');
+      input.required = false;
     }
   });
 }
@@ -359,7 +403,7 @@ function updateBookingRepresentativeVisibility() {
     field.hidden = !isImputado;
     const input = field.querySelector('input');
     if (input) {
-      input.required = isImputado && (input.name === 'bookingRepresentativeName' || input.name === 'bookingRepresentativeLastName');
+      input.required = false;
       if (!isImputado) input.value = '';
     }
   });
@@ -440,11 +484,24 @@ const LAWYER_COLORS = ['#8f203a', '#2166a5', '#2a9d8f', '#e76f51', '#6a4c93', '#
 const PRISON_VISIT_MATTER = 'Visita a la Cárcel';
 const UNASSIGNED_LAWYER_LABEL = 'No asignado aún';
 const GENDARMERIA_RECIPIENTS = [
-  'Omar.sepulveda@gendarmeria.cl',
-  'christian.bravo@gendarmeria.cl'
+  { email: 'Omar.sepulveda@gendarmeria.cl', label: 'Cárcel Hombre' },
+  { email: 'tije.cpfantofagasta@gendarmeria.cl', label: 'Cárcel Mujeres' },
+  { email: 'claudia.lizama@gendarmeria.cl', label: 'Cárcel Mujeres' },
+  { email: '7sarkham@gmail.com', label: 'Prueba personal' }
+];
+const GENDARMERIA_CC_RECIPIENTS = [
+  'administracion@tacam.cl',
+  'estudiojuridico@tacam.cl',
+  'stapia@tacam.cl',
+  'asistente@tacam.cl',
+  'ccliment@tacam.cl',
+  'vreichert@tacam.cl',
+  'daracena@tacam.cl'
 ];
 const DEFAULT_LAWYER_EMAILS = [
-  'kserranokserrano@tacam.cl',
+  'administracion@tacam.cl',
+  'estudiojuridico@tacam.cl',
+  'asistente@tacam.cl',
   'ccliment@tacam.cl',
   'vreichert@tacam.cl',
   'stapia@tacam.cl',
@@ -456,6 +513,7 @@ function normalizeMatterLabel(value) {
   if (!clean) return '';
   const normalized = clean.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
   if (normalized.includes('cartel') || normalized.includes('carcel') || normalized.includes('carce')) return PRISON_VISIT_MATTER;
+  if (normalized.includes('familia') || normalized.includes('familiar')) return 'Familia';
   return clean;
 }
 
@@ -498,7 +556,7 @@ function applyRoleAccess() {
   const session = getSession();
   const role = String(session.role || 'Admin');
   const sessionLawyer = getCurrentSessionLawyerName();
-  const allowedForLawyer = new Set(['create', 'clients', 'prison-visits', 'imputados', 'lawyers']);
+  const allowedForLawyer = new Set(['create', 'agenda', 'bookings', 'prison-visits', 'imputados', 'clients', 'lawyers']);
 
   moduleTabs.forEach(tab => {
     if (role !== 'Abogada') {
@@ -507,30 +565,20 @@ function applyRoleAccess() {
     }
     tab.hidden = !allowedForLawyer.has(tab.dataset.moduleTab || '');
   });
-
   if (role === 'Abogada' && !allowedForLawyer.has(document.querySelector('.module-tab.active')?.dataset.moduleTab || '')) {
-    switchModule('create');
+    switchModule('agenda');
   }
 
   if (prisonLawyerFilter) prisonLawyerFilter.disabled = role === 'Abogada';
   if (lawyerCalendarFilter) lawyerCalendarFilter.disabled = role === 'Abogada';
   if (sharedOnlyInput) sharedOnlyInput.disabled = role === 'Abogada';
-
   if (role === 'Abogada' && sessionLawyer) {
-    if (assignedToSelect) {
-      assignedToSelect.value = sessionLawyer;
-      assignedToSelect.disabled = true;
-    }
-    if (prisonAssignedToSelect) {
-      prisonAssignedToSelect.value = sessionLawyer;
-      prisonAssignedToSelect.disabled = true;
-    }
+    if (assignedToSelect) { assignedToSelect.value = sessionLawyer; assignedToSelect.disabled = false; }
+    if (prisonAssignedToSelect) { prisonAssignedToSelect.value = sessionLawyer; prisonAssignedToSelect.disabled = false; }
     if (lawyerFilter) lawyerFilter.value = sessionLawyer;
     if (prisonLawyerFilter) prisonLawyerFilter.value = sessionLawyer;
+    if (lawyerCalendarFilter) lawyerCalendarFilter.value = sessionLawyer;
     if (reportLawyerFilter) reportLawyerFilter.value = sessionLawyer;
-  } else {
-    if (assignedToSelect) assignedToSelect.disabled = !hiredLawyerInput.checked;
-    if (prisonAssignedToSelect) prisonAssignedToSelect.disabled = false;
   }
 }
 
@@ -539,12 +587,10 @@ function getVisibleClientsForSession() {
   const sessionLawyer = getCurrentSessionLawyerName();
   const clients = getClients();
   if (role !== 'Abogada' || !sessionLawyer) return clients;
-
   const clientIds = new Set(getBookings()
     .filter(booking => (booking.assignedTo || '').trim() === sessionLawyer)
     .map(booking => booking.clientId)
     .filter(Boolean));
-
   return clients.filter(client =>
     clientIds.has(client.id) ||
     String(client.assignedTo || '').trim() === sessionLawyer ||
@@ -562,41 +608,138 @@ function getVisibleBookingsForSession(bookings = getBookings()) {
 
 function ensureDefaultLawyerAccessProfiles() {
   const profiles = getProfiles();
-  let changedProfiles = false;
-  DEFAULT_LAWYER_EMAILS.forEach(email => {
-    const cleanEmail = email.toLowerCase();
+  const normalized = DEFAULT_LAWYER_EMAILS.map(email => email.toLowerCase());
+  const refreshedProfiles = normalized.map(cleanEmail => {
     const username = cleanEmail.split('@')[0];
     const existing = profiles.find(profile =>
-      (String(profile.email || '').trim().toLowerCase() === cleanEmail) ||
-      (String(profile.username || '').trim().toLowerCase() === username)
+      String(profile.email || '').trim().toLowerCase() === cleanEmail
+      || String(profile.username || '').trim().toLowerCase() === username
     );
-    if (existing) {
-      if (!existing.email) existing.email = cleanEmail;
-      if (!existing.username) existing.username = username;
-      if (!existing.password) existing.password = 'tacam123';
-      if (!existing.role) existing.role = 'Abogada';
-      changedProfiles = true;
-      return;
-    }
-    profiles.unshift({
-      id: crypto.randomUUID(),
-      name: username.toUpperCase(),
+    return {
+      id: existing?.id || crypto.randomUUID(),
+      name: String(existing?.name || username.toUpperCase()).trim(),
       username,
       password: 'tacam123',
       role: 'Abogada',
       email: cleanEmail,
+      phone: String(existing?.phone || '').trim(),
+      specialty: String(existing?.specialty || '').trim(),
       permissions: ['Visitas', 'Imputados', 'Editar contactos']
-    });
-    changedProfiles = true;
+    };
   });
-  if (changedProfiles) saveProfiles(profiles);
+  saveProfiles(refreshedProfiles);
+}
+
+function syncLawyerAndProfileUsers() {
+  const lawyers = getLawyers();
+  const profiles = getProfiles();
+  let changedLawyers = false;
+  let changedProfiles = false;
+
+  const normalizeEmail = value => String(value || '').trim().toLowerCase();
+  const normalizeUsername = value => String(value || '').trim().toLowerCase();
+  const normalizeName = value => String(value || '').trim().toLowerCase();
+
+  const uniqueProfiles = [];
+  const profileKeyMap = new Map();
+  profiles.forEach(profile => {
+    const keys = [
+      normalizeEmail(profile.email),
+      normalizeUsername(profile.username)
+    ].filter(Boolean);
+    const duplicated = keys.find(key => profileKeyMap.has(key));
+    if (duplicated) {
+      changedProfiles = true;
+      return;
+    }
+    uniqueProfiles.push(profile);
+    keys.forEach(key => profileKeyMap.set(key, profile));
+  });
+
+  const uniqueLawyers = [];
+  const lawyerKeyMap = new Map();
+  lawyers.forEach(lawyer => {
+    const keys = [
+      normalizeEmail(lawyer.email),
+      normalizeName(lawyer.name)
+    ].filter(Boolean);
+    const duplicated = keys.find(key => lawyerKeyMap.has(key));
+    if (duplicated) {
+      changedLawyers = true;
+      return;
+    }
+    uniqueLawyers.push(lawyer);
+    keys.forEach(key => lawyerKeyMap.set(key, lawyer));
+  });
+
+  uniqueLawyers.forEach(lawyer => {
+    const email = normalizeEmail(lawyer.email);
+    const username = email ? email.split('@')[0] : '';
+    const matchedProfile = uniqueProfiles.find(profile =>
+      normalizeEmail(profile.email) === email ||
+      normalizeUsername(profile.username) === username ||
+      normalizeName(profile.name) === normalizeName(lawyer.name)
+    );
+    if (!matchedProfile) return;
+
+    if (email && normalizeEmail(matchedProfile.email) !== email) {
+      matchedProfile.email = email;
+      changedProfiles = true;
+    }
+    if (username && normalizeUsername(matchedProfile.username) !== username) {
+      matchedProfile.username = username;
+      changedProfiles = true;
+    }
+    if ((matchedProfile.role || '') !== 'Abogada') {
+      matchedProfile.role = 'Abogada';
+      changedProfiles = true;
+    }
+    if (lawyer.phone && matchedProfile.phone !== lawyer.phone) {
+      matchedProfile.phone = lawyer.phone;
+      changedProfiles = true;
+    }
+  });
+
+  uniqueProfiles
+    .filter(profile => (profile.role || '').trim() === 'Abogada')
+    .forEach(profile => {
+      const email = normalizeEmail(profile.email);
+      const match = uniqueLawyers.find(lawyer =>
+        normalizeEmail(lawyer.email) === email ||
+        normalizeName(lawyer.name) === normalizeName(profile.name)
+      );
+      if (match) {
+        if (email && normalizeEmail(match.email) !== email) {
+          match.email = email;
+          changedLawyers = true;
+        }
+        if (profile.phone && match.phone !== profile.phone) {
+          match.phone = profile.phone;
+          changedLawyers = true;
+        }
+        return;
+      }
+      uniqueLawyers.unshift({
+        id: crypto.randomUUID(),
+        name: String(profile.name || profile.username || 'Abogada').trim(),
+        specialty: String(profile.specialty || '').trim(),
+        phone: String(profile.phone || '').trim(),
+        email,
+        rut: String(profile.rut || '').trim(),
+        photo: 'assets/logo-color.svg'
+      });
+      changedLawyers = true;
+    });
+
+  if (changedProfiles || uniqueProfiles.length !== profiles.length) saveProfiles(uniqueProfiles);
+  if (changedLawyers || uniqueLawyers.length !== lawyers.length) saveLawyers(uniqueLawyers);
 }
 
 function hasNotificationConsent(booking) {
   return Boolean(booking?.notificationsConsent);
 }
 
-async function sendEmailViaBrevo(booking, subject, message) {
+async function sendEmailViaBrevo(booking, subject, message, options = {}) {
   const email = String(booking?.email || '').trim();
   if (!email) return false;
 
@@ -608,12 +751,24 @@ async function sendEmailViaBrevo(booking, subject, message) {
         toEmail: email,
         toName: booking.customer || 'Cliente',
         subject,
-        textContent: message
+        textContent: message,
+        templateType: String(options?.templateType || '').trim(),
+        templateData: options?.templateData && typeof options.templateData === 'object' ? options.templateData : {}
       })
     });
 
     if (!response.ok) {
-      console.warn('Brevo email error', await response.text());
+      const body = await response.text();
+      if (response.status === 401) {
+        if (body.toLowerCase().includes('key not found')) {
+          console.warn('Brevo rechazó la autenticación: API key no encontrada. Revisa BREVO_API_KEY en el servidor.');
+        } else {
+          console.warn('Brevo rechazó la autenticación. Revisar API key o restricciones IP en servidor.');
+        }
+      } else {
+        console.warn(`Brevo email error HTTP ${response.status}`);
+      }
+      if (body) console.warn('Brevo detalle:', body);
       return false;
     }
 
@@ -624,13 +779,115 @@ async function sendEmailViaBrevo(booking, subject, message) {
   }
 }
 
+function normalizeWhatsAppPhone(phoneRaw) {
+  const destination = cleanPhone(phoneRaw);
+  if (!destination) return '';
+  const normalized = destination.startsWith('+') ? destination : `+${destination}`;
+  return /^\+\d{8,15}$/.test(normalized) ? normalized : '';
+}
+
+
+function openDesktopWhatsApp(phoneRaw, message) {
+  const normalized = normalizeWhatsAppPhone(phoneRaw);
+  if (!normalized) {
+    showToast('Contacto sin WhatsApp válido para remarketing.');
+    return;
+  }
+
+  const phoneDigits = normalized.replace(/^\+/, '');
+  const text = encodeURIComponent(String(message || '').trim());
+  const url = `https://web.whatsapp.com/send?phone=${phoneDigits}&text=${text}`;
+  window.open(url, '_blank', 'noopener');
+}
+
+function openMailClient(toEmails, subject, body, options = {}) {
+  const list = Array.isArray(toEmails)
+    ? [...new Set(toEmails.map(email => String(email || '').trim()).filter(Boolean))]
+    : [String(toEmails || '').trim()].filter(Boolean);
+
+  if (!list.length) {
+    showToast('No hay correos válidos para abrir el cliente de correo.');
+    return;
+  }
+
+  const params = new URLSearchParams();
+  if (subject) params.set('subject', subject);
+  if (body) params.set('body', body);
+
+  const useBcc = Boolean(options && options.useBcc);
+  const base = useBcc
+    ? `mailto:?bcc=${encodeURIComponent(list.join(','))}`
+    : `mailto:${encodeURIComponent(list.join(','))}`;
+  const href = params.toString() ? `${base}&${params.toString()}` : base;
+  window.location.href = href;
+}
+
+function formatReadableDate(dateValue) {
+  if (!dateValue) return '';
+  const date = new Date(`${dateValue}T12:00:00`);
+  if (Number.isNaN(date.getTime())) return dateValue;
+  return date.toLocaleDateString('es-CL', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
+}
+
+async function sendWhatsAppNotification(phoneRaw, message) {
+  const toPhone = normalizeWhatsAppPhone(phoneRaw);
+  const cleanMessage = String(message || '').trim();
+  if (!toPhone || !cleanMessage) {
+    return { ok: false, status: 'invalid_payload', twilioSid: '', errorMessage: 'phone_or_message_invalid' };
+  }
+
+  if (!APP_CONFIG.internalToken) {
+    console.warn('APP_INTERNAL_TOKEN no configurado para endpoint interno de WhatsApp. El envío se omite para evitar 401.');
+    return { ok: false, status: 'missing_internal_token', twilioSid: '', errorMessage: 'missing_internal_token' };
+  }
+
+  const headers = {
+    'Content-Type': 'application/json',
+    'X-Internal-Token': APP_CONFIG.internalToken
+  };
+
+  try {
+    const response = await fetch(APP_CONFIG.twilioEndpoint, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ toPhone, message: cleanMessage })
+    });
+    const data = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+      const remoteError = String(data.error_message || '').trim();
+      if (response.status === 401) {
+        console.warn('Twilio endpoint rechazó autenticación (401). Revisa APP_INTERNAL_TOKEN en frontend y servidor.');
+      } else {
+        console.warn(`Twilio endpoint error HTTP ${response.status}.`);
+      }
+      if (remoteError) console.warn('Twilio detalle:', remoteError);
+    }
+
+    return {
+      ok: Boolean(response.ok && data.ok),
+      status: String(data.status || (response.ok ? 'sent' : 'error')),
+      twilioSid: String(data.twilio_sid || ''),
+      errorMessage: String(data.error_message || '')
+    };
+  } catch (error) {
+    console.warn('Twilio WhatsApp request failed', error);
+    return { ok: false, status: 'request_failed', twilioSid: '', errorMessage: 'request_failed' };
+  }
+}
+
+function buildWhatsAppConfirmationMessage(booking) {
+  const name = String(booking?.customer || '').trim();
+  const dateText = formatReadableDate(booking?.date);
+  const timeText = String(booking?.time || '').trim();
+  if (!name || !dateText || !timeText) return '';
+  return `Hola ${name}, tu cita ha sido confirmada.\n\nTe esperamos el día ${dateText} a las ${timeText}.\n\nSi necesitas modificarla, responde a este mensaje o contáctanos.\n\nEquipo TACAM`;
+}
+
 async function notifyBooking(booking) {
   if (!hasNotificationConsent(booking)) return false;
-  const destination = cleanPhone(booking.phone);
-  if (!destination) return false;
-  const msg = encodeURIComponent(buildTacamMessage(booking));
-  window.open(`https://wa.me/${destination}?text=${msg}`, '_blank', 'noopener');
-  return true;
+  const result = await sendWhatsAppNotification(booking.phone, buildTacamMessage(booking));
+  return result.ok;
 }
 
 function buildRescheduleMessage(booking, fromDate, toDate) {
@@ -669,25 +926,47 @@ function buildVisitScheduledMessage(booking) {
   return `Calendario de visitas TACAM: enviamos correo automático a la persona. Tu cita quedó agendada para ${booking.date} ${booking.time}. Materia: ${matter}. Abogada: ${booking.assignedTo || 'Por confirmar'}. Luego recibirás un recordatorio de que vas a tener una cita.`;
 }
 
-async function notifyBookingChannels(booking, message, emailSubject) {
+function buildEmailTemplateData(booking, extra = {}) {
+  return {
+    fecha: String(extra.fecha || booking?.date || '-').trim() || '-',
+    hora: String(extra.hora || booking?.time || '--:--').trim() || '--:--',
+    abogado: String(extra.abogado || booking?.assignedTo || 'Por confirmar').trim() || 'Por confirmar',
+    area: String(extra.area || normalizeMatterLabel(booking?.matter) || 'General').trim() || 'General',
+    ubicacion: String(extra.ubicacion || booking?.address || 'Antofagasta, Chile').trim() || 'Antofagasta, Chile'
+  };
+}
+
+async function notifyBookingChannels(booking, message, emailSubject, emailOptions = {}, channelOptions = {}) {
   if (!hasNotificationConsent(booking)) return false;
+  const onlyLawyer = channelOptions.onlyLawyer === undefined ? isPrisonVisit(booking) : Boolean(channelOptions.onlyLawyer);
+  const lawyerPhone = getLawyerPhone(booking.assignedTo);
+  const lawyerEmail = getLawyerEmail(booking.assignedTo);
+  const clientPhone = cleanPhone(booking.phone);
 
-  const encoded = encodeURIComponent(message);
-  const targets = [cleanPhone(booking.phone), getLawyerPhone(booking.assignedTo)].filter(Boolean);
-  let sent = false;
+  const targets = onlyLawyer ? [lawyerPhone].filter(Boolean) : [clientPhone, lawyerPhone].filter(Boolean);
+  const uniqueTargets = [...new Set(targets)];
+  const whatsappResults = await Promise.all(uniqueTargets.map(target => sendWhatsAppNotification(target, message)));
+  const sent = whatsappResults.some(item => item.ok);
+  if (!sent && uniqueTargets.length) {
+    console.warn('No se pudo enviar WhatsApp por Twilio para la reserva', booking?.id || '');
+  }
 
-  [...new Set(targets)].forEach(target => {
-    window.open(`https://wa.me/${target}?text=${encoded}`, '_blank', 'noopener');
-    sent = true;
-  });
-
-  const emailSent = await sendEmailViaBrevo(booking, emailSubject, message);
+  const emailTarget = onlyLawyer ? lawyerEmail : String(booking?.email || '').trim();
+  const emailSent = await sendEmailViaBrevo(
+    { ...booking, email: emailTarget, customer: onlyLawyer ? (booking.assignedTo || 'Abogada') : booking.customer },
+    emailSubject,
+    message,
+    emailOptions
+  );
   return sent || emailSent;
 }
 
 async function notifyVisitScheduled(booking) {
-  const message = buildVisitScheduledMessage(booking);
-  return notifyBookingChannels(booking, message, isPrisonVisit(booking) ? 'TACAM: visita a la cárcel agendada' : 'Calendario de visitas TACAM: cita agendada');
+  const message = buildWhatsAppConfirmationMessage(booking) || buildVisitScheduledMessage(booking);
+  return notifyBookingChannels(booking, message, isPrisonVisit(booking) ? 'TACAM: visita a la cárcel agendada' : 'Calendario de visitas TACAM: cita agendada', {
+    templateType: 'appointment_scheduled',
+    templateData: buildEmailTemplateData(booking)
+  });
 }
 
 function getLawyerPhone(lawyerName) {
@@ -695,9 +974,17 @@ function getLawyerPhone(lawyerName) {
   return lawyer ? cleanPhone(lawyer.phone) : '';
 }
 
+function getLawyerEmail(lawyerName) {
+  const lawyer = getLawyers().find(item => (item.name || '').trim() === (lawyerName || '').trim());
+  return lawyer ? String(lawyer.email || '').trim() : '';
+}
+
 async function notifyReschedule(booking, fromDate, toDate) {
   const message = buildRescheduleMessage(booking, fromDate, toDate);
-  return notifyBookingChannels(booking, message, 'Reagendamiento de cita TACAM');
+  return notifyBookingChannels(booking, message, 'Reagendamiento de cita TACAM', {
+    templateType: 'reschedule',
+    templateData: buildEmailTemplateData(booking, { fecha: toDate })
+  });
 }
 
 async function notifyUpcomingAppointments() {
@@ -713,7 +1000,10 @@ async function notifyUpcomingAppointments() {
     if (diffMinutes < 0) continue;
 
     if (diffMinutes <= 1440 && !booking.reminder24hSentAt) {
-      const sent24h = await notifyBookingChannels(booking, build24hReminderMessage(booking), 'Recordatorio TACAM: cita en 24 horas');
+      const sent24h = await notifyBookingChannels(booking, build24hReminderMessage(booking), 'Recordatorio TACAM: cita en 24 horas', {
+        templateType: 'reminder_24h',
+        templateData: buildEmailTemplateData(booking)
+      });
       if (sent24h) {
         booking.reminder24hSentAt = now.toISOString();
         hasUpdates = true;
@@ -722,7 +1012,10 @@ async function notifyUpcomingAppointments() {
 
 
     if (diffMinutes <= 60 && !booking.reminder1hSentAt) {
-      const sent1h = await notifyBookingChannels(booking, buildReminderMessage(booking, diffMinutes), 'Recordatorio TACAM: vas a tener una cita');
+      const sent1h = await notifyBookingChannels(booking, buildReminderMessage(booking, diffMinutes), 'Recordatorio TACAM: vas a tener una cita', {
+        templateType: 'reminder_1h',
+        templateData: buildEmailTemplateData(booking)
+      });
       if (sent1h) {
         booking.reminder1hSentAt = now.toISOString();
         hasUpdates = true;
@@ -737,19 +1030,39 @@ async function notifyUpcomingAppointments() {
   }
 }
 
-function moveBookingDate(bookingId, newDate) {
-  if (!newDate) return;
+function promptRescheduleData(booking, suggestedDate) {
+  const dateValue = String(window.prompt('Nueva fecha de la cita (YYYY-MM-DD)', suggestedDate || booking.date || '') || '').trim();
+  if (!dateValue) return null;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateValue)) {
+    showToast('Fecha inválida. Usa formato YYYY-MM-DD.');
+    return null;
+  }
+  const timeValue = String(window.prompt('Nueva hora de la cita (HH:MM)', booking.time || '09:00') || '').trim();
+  if (!timeValue) return null;
+  if (!/^\d{2}:\d{2}$/.test(timeValue)) {
+    showToast('Hora inválida. Usa formato HH:MM.');
+    return null;
+  }
+  return { date: dateValue, time: timeValue };
+}
+
+function moveBookingDate(bookingId, suggestedDate) {
   const bookings = getBookings();
   const booking = bookings.find(item => item.id === bookingId);
-  if (!booking || booking.date === newDate) return;
+  if (!booking) return;
+  const nextData = promptRescheduleData(booking, suggestedDate);
+  if (!nextData) return;
+  if (booking.date === nextData.date && booking.time === nextData.time) return;
 
   const oldDate = booking.date;
-  booking.date = newDate;
+  booking.date = nextData.date;
+  booking.time = nextData.time;
   booking.reminder24hSentAt = '';
   booking.reminder1hSentAt = '';
   saveBookings(bookings);
   renderAll();
-  void notifyReschedule(booking, oldDate, newDate);
+  void notifyReschedule(booking, oldDate, nextData.date);
+  showToast('Cita reprogramada correctamente.');
 }
 
 function updateBooking(bookingId, updater) {
@@ -795,7 +1108,10 @@ async function updateBookingStatusWithNotification(bookingId, status) {
       ? 'TACAM: reserva cancelada'
       : `TACAM: estado actualizado (${statusLabel(status)})`;
 
-  await notifyBookingChannels(booking, buildStatusChangeMessage(booking, status), subject);
+  await notifyBookingChannels(booking, buildStatusChangeMessage(booking, status), subject, {
+    templateType: 'status_update',
+    templateData: buildEmailTemplateData(booking)
+  });
 }
 
 function formatAppointment(booking) {
@@ -821,7 +1137,10 @@ function formatRut(value) {
 }
 
 function formatPhone(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
   let digits = String(value || '').replace(/\D/g, '');
+  if (!digits) return '';
   if (digits.startsWith('56')) digits = digits.slice(2);
   if (digits.startsWith('0')) digits = digits.slice(1);
   if (!digits.startsWith('9')) digits = `9${digits}`;
@@ -829,13 +1148,109 @@ function formatPhone(value) {
   return `+56${digits}`;
 }
 
+function normalizePrisonSheetTokens(value) {
+  return String(value || '')
+    .split(' - ')
+    .map(token => String(token || '').replace(/\s+/g, ' ').trim())
+    .filter(Boolean);
+}
+
+function normalizePrisonSheetRut(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+  const formatted = formatRut(raw);
+  return isValidRut(formatted) ? formatted : raw;
+}
+
+function importPrisonClientsFromSpreadsheetRows(rows) {
+  if (!Array.isArray(rows) || !rows.length) {
+    showToast('No hay filas para importar.');
+    return { imported: 0, updated: 0, skipped: 0 };
+  }
+
+  const clients = getClients();
+  const byRut = new Map(clients.map(client => [String(client.rut || '').trim().toLowerCase(), client]).filter(([key]) => key));
+  const byName = new Map(clients.map(client => [String(client.name || '').trim().toLowerCase(), client]).filter(([key]) => key));
+
+  let imported = 0;
+  let updated = 0;
+  let skipped = 0;
+
+  rows.forEach(row => {
+    if (!row || typeof row !== 'object') return;
+    const indexRaw = row['CLIENTES PRIVADOS DE LIBERTAD '];
+    const isDataRow = Number.isFinite(Number(indexRaw));
+    if (!isDataRow) return;
+
+    const names = normalizePrisonSheetTokens(row['Unnamed: 1']);
+    const ruts = normalizePrisonSheetTokens(row['Unnamed: 2']).map(normalizePrisonSheetRut);
+    const moduleText = String(row['Unnamed: 3'] || '').trim();
+
+    if (!names.length) {
+      skipped += 1;
+      return;
+    }
+
+    names.forEach((name, idx) => {
+      const rut = ruts[idx] || '';
+      const rutKey = rut.toLowerCase();
+      const nameKey = name.toLowerCase();
+      const existing = (rutKey && byRut.get(rutKey)) || byName.get(nameKey) || null;
+
+      if (existing) {
+        existing.name = name;
+        if (rut) {
+          existing.rut = rut;
+          byRut.set(rutKey, existing);
+        }
+        existing.inPrison = true;
+        existing.imputadoStatus = 'imputado';
+        existing.imputadoModule = moduleText || existing.imputadoModule || existing.prisonModule || '';
+        existing.prisonModule = moduleText || existing.prisonModule || existing.imputadoModule || '';
+        existing.updatedAt = new Date().toISOString();
+        byName.set(nameKey, existing);
+        updated += 1;
+        return;
+      }
+
+      const created = {
+        id: crypto.randomUUID(),
+        name,
+        rut,
+        phone: '',
+        email: '',
+        address: '',
+        inPrison: true,
+        imputadoStatus: 'imputado',
+        imputadoModule: moduleText,
+        prisonModule: moduleText,
+        representative: null,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+      clients.unshift(created);
+      if (rutKey) byRut.set(rutKey, created);
+      byName.set(nameKey, created);
+      imported += 1;
+    });
+  });
+
+  saveClients(clients);
+  renderAll();
+  playSaveChime();
+  showToast(`Importación cárcel lista: ${imported} nuevos, ${updated} actualizados.`, { forcePopup: true });
+  return { imported, updated, skipped };
+}
+
+window.importPrisonClientsFromSpreadsheetRows = importPrisonClientsFromSpreadsheetRows;
+
 function isValidRut(value) {
   const clean = String(value || '').replace(/[.\-]/g, '').toUpperCase();
   return /^\d{7,8}[\dK]$/.test(clean);
 }
 
 function isValidPhone(value) {
-  return /^\+569\d{8}$/.test(String(value || ''));
+  return /^\+56(?:9\d{8}|\d{8,9})$/.test(String(value || ''));
 }
 
 function updateChileClock() {
@@ -903,7 +1318,7 @@ function renderClientOptions() {
     });
 
   renderClientSearchResults(clients, query);
-  const selectedClient = getClients().find(client => client.id === clientSelect.value);
+  const selectedClient = getVisibleClientsForSession().find(client => client.id === clientSelect.value);
   clientSelectedLabel.textContent = selectedClient
     ? `Contacto seleccionado: ${selectedClient.name} · ${selectedClient.rut}`
     : 'Contacto seleccionado: ninguno';
@@ -959,6 +1374,7 @@ function renderClients() {
   clientsBody.replaceChildren();
 
   if (!clients.length) {
+    if (clientsShowMoreBtn) clientsShowMoreBtn.hidden = true;
     const row = document.createElement('tr');
     const cell = document.createElement('td');
     cell.colSpan = 7;
@@ -968,7 +1384,10 @@ function renderClients() {
     return;
   }
 
-  clients.forEach(client => {
+  const visibleLimit = Math.min(clientsVisibleLimit, clients.length);
+  const visibleClients = clients.slice(0, visibleLimit);
+
+  visibleClients.forEach(client => {
     const row = document.createElement('tr');
     appendCell(row, client.name || '');
     appendCell(row, client.rut || '');
@@ -980,6 +1399,16 @@ function renderClients() {
     appendCell(row, representativeName ? `${representativeName} (representa a ${client.name || '-'})` : '-');
     clientsBody.appendChild(row);
   });
+
+  if (!clientsShowMoreBtn) return;
+  if (visibleLimit >= clients.length) {
+    clientsShowMoreBtn.hidden = true;
+    return;
+  }
+  clientsShowMoreBtn.hidden = false;
+  const pending = clients.length - visibleLimit;
+  const nextBatch = Math.min(CLIENTS_PAGE_SIZE, pending);
+  clientsShowMoreBtn.textContent = `Mostrar ${nextBatch} más`;
 }
 
 function getLastBookingForClient(clientId, predicate = null) {
@@ -1153,6 +1582,7 @@ function renderClientEditOptions() {
     updateEditRepresentativeVisibility();
     clientEditAssignedToSelect.value = UNASSIGNED_LAWYER_LABEL;
     clientEditAssignedToSelect.disabled = true;
+    if (deleteClientBtn) deleteClientBtn.disabled = true;
   }
 }
 
@@ -1162,6 +1592,7 @@ function fillClientEditForm(clientId) {
     clientEditForm.reset();
     clientEditImputadoStatusInput.value = 'no_imputado';
     updateEditRepresentativeVisibility();
+    if (deleteClientBtn) deleteClientBtn.disabled = true;
     return;
   }
 
@@ -1186,17 +1617,18 @@ function fillClientEditForm(clientId) {
   }, representative);
   updateEditRepresentativeVisibility();
 
-  const clientBookings = getBookings().filter(booking => booking.clientId === clientId);
+  const clientBookings = getVisibleBookingsForSession(getBookings()).filter(booking => booking.clientId === clientId);
   const hiredBooking = clientBookings.find(booking => booking.hiredLawyer);
   clientEditHiredLaterInput.checked = Boolean(hiredBooking);
   clientEditAssignedToSelect.value = hiredBooking?.assignedTo || UNASSIGNED_LAWYER_LABEL;
   clientEditAssignedToSelect.disabled = !clientEditHiredLaterInput.checked;
+  if (deleteClientBtn) deleteClientBtn.disabled = false;
 }
 
 function getLawyerStats(lawyerName) {
   const stats = { total: 0, nueva: 0, confirmada: 0, atendida: 0, cancelada: 0 };
 
-  getBookings().forEach(booking => {
+  getVisibleBookingsForSession(getBookings()).forEach(booking => {
     if ((booking.assignedTo || '').trim() !== lawyerName) return;
     stats.total += 1;
     if (Object.hasOwn(stats, booking.status)) {
@@ -1221,7 +1653,7 @@ function getLawyerColor(name) {
 }
 
 function getCalendarBookings(selectedLawyer, selectedMonth, onlyShared = false, predicate = null) {
-  const allBookings = getBookings().filter(booking => booking.hiredLawyer && booking.status !== 'cancelada' && booking.date);
+  const allBookings = getVisibleBookingsForSession(getBookings()).filter(booking => booking.hiredLawyer && booking.status !== 'cancelada' && booking.date);
   const filteredBookings = typeof predicate === 'function' ? allBookings.filter(predicate) : allBookings;
   const byMonth = filteredBookings.filter(booking => !selectedMonth || booking.date.slice(0, 7) === selectedMonth);
   const byLawyer = byMonth.filter(booking => !selectedLawyer || booking.assignedTo === selectedLawyer);
@@ -1347,7 +1779,9 @@ function renderCalendar(container, bookings, selectedMonth) {
 }
 
 function renderAgendaCalendar() {
-  const selectedLawyer = lawyerFilter.value.trim();
+  const role = getCurrentSessionRole();
+  const sessionLawyer = getCurrentSessionLawyerName();
+  const selectedLawyer = role === 'Abogada' && sessionLawyer ? sessionLawyer : lawyerFilter.value.trim();
   const selectedMonth = agendaMonthInput.value;
   const bookings = getCalendarBookings(selectedLawyer, selectedMonth, false, booking => !isPrisonVisit(booking));
   const names = [...new Set(bookings.map(booking => booking.assignedTo).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es'));
@@ -1392,7 +1826,7 @@ function getLawyerAttentionStats() {
 
 function getPrisonVisitStats() {
   const map = new Map();
-  getBookings()
+  getVisibleBookingsForSession(getBookings())
     .filter(booking => isPrisonVisit(booking) && booking.prisonAttendance === 'asistio')
     .forEach(booking => {
       const lawyer = (booking.assignedTo || 'Sin abogada').trim() || 'Sin abogada';
@@ -1400,6 +1834,64 @@ function getPrisonVisitStats() {
       map.set(lawyer, map.get(lawyer) + 1);
     });
   return [...map.entries()].map(([lawyer, total]) => ({ lawyer, total }));
+}
+
+function getRankingTone(total) {
+  if (total >= 4) return 'high';
+  if (total >= 2) return 'mid';
+  return 'low';
+}
+
+function renderPrisonLawyerRankingCard() {
+  if (!(prisonLawyerRankingCard instanceof HTMLElement)) return;
+  prisonLawyerRankingCard.replaceChildren();
+
+  const ranking = getPrisonVisitStats()
+    .sort((a, b) => b.total - a.total || a.lawyer.localeCompare(b.lawyer, 'es'))
+    .slice(0, 10);
+
+  if (!ranking.length) {
+    const empty = document.createElement('p');
+    empty.className = 'muted';
+    empty.textContent = 'Sin visitas a la cárcel para mostrar ranking.';
+    prisonLawyerRankingCard.appendChild(empty);
+    return;
+  }
+
+  const maxTotal = Math.max(...ranking.map(item => item.total), 1);
+  ranking.forEach((item, index) => {
+    const tone = getRankingTone(item.total);
+    const row = document.createElement('div');
+    row.className = 'ranking-row';
+
+    const position = document.createElement('div');
+    position.className = `ranking-position ${tone === 'low' ? 'low' : ''}`.trim();
+    position.textContent = String(index + 1);
+    row.appendChild(position);
+
+    const main = document.createElement('div');
+    main.className = 'ranking-main';
+    const name = document.createElement('div');
+    name.className = 'ranking-name';
+    name.textContent = item.lawyer;
+    main.appendChild(name);
+
+    const track = document.createElement('div');
+    track.className = 'ranking-track';
+    const fill = document.createElement('div');
+    fill.className = `ranking-fill ${tone}`;
+    fill.style.width = `${(item.total / maxTotal) * 100}%`;
+    track.appendChild(fill);
+    main.appendChild(track);
+    row.appendChild(main);
+
+    const badge = document.createElement('div');
+    badge.className = `ranking-badge ${tone}`;
+    badge.textContent = String(item.total);
+    row.appendChild(badge);
+
+    prisonLawyerRankingCard.appendChild(row);
+  });
 }
 
 function getLawyerRankingStats() {
@@ -1419,7 +1911,7 @@ function getLawyerRankingStats() {
 
 function getPrisonPersonStats(selectedLawyer = '') {
   const map = new Map();
-  getBookings()
+  getVisibleBookingsForSession(getBookings())
     .filter(booking => isPrisonVisit(booking) && booking.prisonAttendance === 'asistio')
     .filter(booking => !selectedLawyer || (booking.assignedTo || '').trim() === selectedLawyer)
     .forEach(booking => {
@@ -1660,21 +2152,12 @@ function restoreBackupPayload(payload) {
   saveBookings(payload.bookings);
   saveLawyers(payload.lawyers);
   saveProfiles(payload.profiles);
+  syncLawyerAndProfileUsers();
   renderAll();
 }
 
 function renderReports() {
-  const general = getGeneralStatusStats();
-  const generalLabels = ['Nueva', 'Confirmada', 'Atendida', 'Cancelada'];
-  const generalValues = [general.nueva, general.confirmada, general.atendida, general.cancelada];
-  const generalColors = ['#f5d3dc', '#ead8fa', '#ceefd8', '#ffd1d1'];
-  drawBarChart(generalStatsChart, generalLabels, generalValues, generalColors, 'Atenciones generales por estado');
-
-  const lawyerStats = getLawyerAttentionStats();
-  const lawyerLabels = lawyerStats.map(item => item.lawyer);
-  const lawyerValues = lawyerStats.map(item => item.atendida);
-  const lawyerColors = lawyerStats.map(item => getAttentionPerformanceColor(item.atendida));
-  drawBarChart(lawyerStatsChart, lawyerLabels, lawyerValues, lawyerColors, 'Atenciones (estado atendida) por abogada');
+  renderPrisonLawyerRankingCard();
 
   const prisonStats = getPrisonVisitStats().sort((a, b) => b.total - a.total);
   drawHorizontalBarChart(
@@ -1683,15 +2166,6 @@ function renderReports() {
     prisonStats.map(item => item.total),
     prisonStats.map(item => getVisitRangeColor(item.total)),
     'Visitas a la cárcel por abogada'
-  );
-
-  const ranking = getLawyerRankingStats();
-  drawHorizontalBarChart(
-    lawyerRankingChart,
-    ranking.map(item => item.lawyer),
-    ranking.map(item => item.attended),
-    ranking.map(item => getVisitRangeColor(item.attended)),
-    'Ranking por atenciones (abogadas)'
   );
 
   const selectedLawyer = String(reportLawyerFilter.value || '').trim();
@@ -1859,22 +2333,50 @@ function renderBookings() {
   });
 
   bookingsBody.querySelectorAll('[data-remarket-whatsapp]').forEach(btn => {
-    btn.onclick = async () => {
+    btn.onclick = () => {
       const booking = getBookings().find(item => item.id === btn.dataset.remarketWhatsapp);
       if (!booking) return;
-      const msg = `TACAM: Hola ${booking.customer || 'cliente'}, tenemos nuevas opciones legales para tu caso. ¿Te gustaría una nueva reunión?`;
-      await notifyBookingChannels(booking, msg, 'TACAM: campaña de seguimiento');
+      const msg = `Hola ${booking.customer || 'cliente'}, te saluda TACAM. Tenemos nuevas opciones legales para tu caso. ¿Te gustaría agendar una nueva reunión?`;
+      openDesktopWhatsApp(booking.phone, msg);
     };
   });
 
   bookingsBody.querySelectorAll('[data-remarket-email]').forEach(btn => {
-    btn.onclick = async () => {
+    btn.onclick = () => {
       const booking = getBookings().find(item => item.id === btn.dataset.remarketEmail);
       if (!booking) return;
-      const msg = `TACAM: seguimiento de tu caso. Tenemos novedades y opciones de apoyo legal para ${normalizeMatterLabel(booking.matter) || 'tu consulta'}.`;
-      await sendEmailViaBrevo(booking, 'TACAM: seguimiento y remarketing', msg);
+      const email = String(booking.email || '').trim();
+      const subject = 'TACAM: seguimiento y opciones legales';
+      const msg = `Hola ${booking.customer || 'cliente'},
+
+Desde TACAM te contactamos para comentarte que tenemos novedades y opciones de apoyo legal para ${normalizeMatterLabel(booking.matter) || 'tu consulta'}.
+
+Si te parece, podemos agendar una nueva reunión.
+
+Saludos,
+Equipo TACAM`;
+      openMailClient(email, subject, msg);
     };
   });
+
+  if (remarketingEmailAllBtn) {
+    remarketingEmailAllBtn.onclick = () => {
+      const visibleNoHired = getVisibleBookingsForSession(getBookings())
+        .filter(booking => !booking.hiredLawyer && !isPrisonVisit(booking));
+      const emails = [...new Set(visibleNoHired.map(booking => String(booking.email || '').trim()).filter(Boolean))];
+      const subject = 'TACAM: seguimiento general a contactos no contratados';
+      const body = `Hola,
+
+Desde TACAM queremos retomar el contacto para apoyarte con tu caso.
+
+Si quieres, podemos coordinar una nueva reunión.
+
+Saludos,
+Equipo TACAM`;
+      openMailClient(emails, subject, body, { useBcc: true });
+    };
+    remarketingEmailAllBtn.disabled = false;
+  }
 }
 
 function renderAgenda() {
@@ -1884,7 +2386,6 @@ function renderAgenda() {
   const bookings = getVisibleBookingsForSession(getBookings()).filter(booking =>
     booking.hiredLawyer && booking.status !== 'cancelada' && !isPrisonVisit(booking) && (!selectedLawyer || booking.assignedTo === selectedLawyer)
   );
-  if (role === 'Abogada' && sessionLawyer && lawyerFilter) lawyerFilter.value = sessionLawyer;
 
   agendaBody.replaceChildren();
 
@@ -1972,12 +2473,29 @@ function buildPrisonCheckInMessage(booking) {
 
 function getFilteredPrisonVisitsForReport() {
   const selectedMonth = prisonMonthInput.value;
-  const selectedLawyer = String(prisonLawyerFilter.value || '').trim();
-  return getBookings()
+  const role = getCurrentSessionRole();
+  const sessionLawyer = getCurrentSessionLawyerName();
+  const selectedLawyer = role === 'Abogada' && sessionLawyer ? sessionLawyer : String(prisonLawyerFilter.value || '').trim();
+  return getVisibleBookingsForSession(getBookings())
     .filter(booking => booking.hiredLawyer && booking.status !== 'cancelada' && isPrisonVisit(booking))
     .filter(booking => !selectedLawyer || booking.assignedTo === selectedLawyer)
     .filter(booking => !selectedMonth || booking.date.slice(0, 7) === selectedMonth)
     .sort((a, b) => `${a.date || ''} ${a.time || ''}`.localeCompare(`${b.date || ''} ${b.time || ''}`));
+}
+
+function getTomorrowDateString() {
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  return `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, '0')}-${String(tomorrow.getDate()).padStart(2, '0')}`;
+}
+
+function getTomorrowPrisonVisitsForGendarmeria(filterValue = '') {
+  const tomorrow = getTomorrowDateString();
+  return getVisibleBookingsForSession(getBookings())
+    .filter(booking => booking.hiredLawyer && booking.status !== 'cancelada' && isPrisonVisit(booking))
+    .filter(booking => booking.date === tomorrow)
+    .filter(booking => !filterValue || booking.assignedTo === filterValue)
+    .sort((a, b) => `${a.date || ''} ${a.time || ''}`.localeCompare(`${b.date || ''} ${b.time || ''}`, 'es'));
 }
 
 function buildGendarmeriaListMessage(visits) {
@@ -1985,18 +2503,139 @@ function buildGendarmeriaListMessage(visits) {
   const header = [
     `FICHA VISITA INTERNO - ${titleMonth}`,
     '',
-    'NOMBRE INTERNO | FECHA | HORA | MÓDULO | TIEMPO VISITA | ABOGADA'
+    'NOMBRE INTERNO | RUT'
   ];
-  const rows = visits.map((booking, index) => {
-    const modulo = booking.prisonModule || booking.representative?.modulo || '-';
-    const visitTime = booking.notes ? String(booking.notes).slice(0, 40) : '30 minutos';
-    return `${index + 1}. ${booking.customer || '-'} | ${booking.date || '-'} | ${booking.time || '--:--'} | ${modulo} | ${visitTime} | ${booking.assignedTo || 'Sin asignar'} (RUT: ${booking.rut || '-'})`;
-  });
+  const rows = visits.map((booking, index) => `${index + 1}. ${booking.customer || '-'} | ${booking.rut || '-'}`);
   return [...header, ...rows, '', 'TACAM - Sistema de Reservas'].join('\n');
 }
 
+function getSenderLawyerIdentity() {
+  const sessionName = String(getCurrentSessionLawyerName() || '').trim();
+  if (!sessionName) return { name: '', rut: '' };
+  const lawyer = getLawyers().find(item => (item.name || '').trim() === sessionName);
+  return {
+    name: sessionName,
+    rut: String(lawyer?.rut || '').trim()
+  };
+}
+
+function buildGendarmeriaTemplateData(visits, senderLawyer = {}) {
+  const safeVisits = Array.isArray(visits) ? visits.slice(0, 6) : [];
+  const folioBase = Date.now().toString().slice(-8);
+  const senderName = String(senderLawyer?.name || '').trim();
+  const senderRut = String(senderLawyer?.rut || '').trim();
+  return {
+    fechaHoy: String(safeVisits[0]?.date || getTomorrowDateString()),
+    totalVisitas: String(Array.isArray(visits) ? visits.length : 0),
+    folioDocumento: `TAC-${folioBase}`,
+    abogadaNombre: senderName,
+    abogadaRut: senderRut,
+    visits: safeVisits.map((booking, index) => ({
+      numero: index + 1,
+      hora: String(booking?.time || '--:--'),
+      nombre: String(booking?.customer || '-'),
+      rut: String(booking?.rut || '-')
+    }))
+  };
+}
+
+function escapePreviewHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 function getGendarmeriaRecipients() {
-  return [...GENDARMERIA_RECIPIENTS];
+  const checked = Array.from(document.querySelectorAll('[data-gendarmeria-recipient]'))
+    .filter(input => input instanceof HTMLInputElement && input.checked)
+    .map(input => String(input.value || '').trim())
+    .filter(Boolean);
+  if (checked.length) return [...new Set(checked)];
+  return GENDARMERIA_RECIPIENTS.map(item => item.email);
+}
+
+function buildGendarmeriaPreviewHtml(visits, subject, recipients) {
+  const safeVisits = Array.isArray(visits) ? visits : [];
+  const safeRecipients = Array.isArray(recipients) ? recipients : [];
+  const senderLawyer = getSenderLawyerIdentity();
+  const firstVisit = safeVisits[0] || {};
+  const fechaVisita = escapePreviewHtml(firstVisit.date || getTomorrowDateString());
+  const horaVisita = escapePreviewHtml(firstVisit.time || '--:--');
+  const paragraph = senderLawyer.name
+    ? `La abogada <b>${escapePreviewHtml(senderLawyer.name)}</b>${senderLawyer.rut ? `, cédula de identidad <b>N° ${escapePreviewHtml(senderLawyer.rut)}</b>,` : ''} por este acto viene a solicitar coordinar visita presencial con los internos que se indican a continuación, en el horario de entrevista señalado.`
+    : 'Se solicita coordinar visita presencial con los internos que se indican a continuación, en el horario de entrevista señalado.';
+
+  const rows = safeVisits.map((booking) => {
+    return `<tr><td class="name">${escapePreviewHtml(booking.customer || '-')}</td><td class="rut">${escapePreviewHtml(booking.rut || '-')}</td><td class="fill"></td><td class="fill"></td><td class="fill"></td></tr>`;
+  }).join('');
+
+  return `<!doctype html><html lang="es"><head><meta charset="utf-8" /><title>Previsualización correo Gendarmería</title><style>
+  :root{--ink:#0f172a;--muted:#64748b;--line:#e2e8f0;--tacam-red:#b91c1c;--tacam-red-dark:#7f1d1d;--celeste:#e0f2fe;--celeste-border:#7dd3fc;--celeste-ink:#075985;--bg:#f6f7fb;--card:#ffffff;}
+  *{box-sizing:border-box} html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Inter,sans-serif;-webkit-font-smoothing:antialiased;}
+  .page{max-width:880px;margin:24px auto;background:var(--card);border-radius:18px;box-shadow:0 20px 60px -25px rgba(15,23,42,.25);overflow:hidden;}
+  .header-red{background:linear-gradient(135deg,var(--tacam-red),var(--tacam-red-dark));padding:28px 56px;display:flex;justify-content:space-between;align-items:center;color:#fff;}
+  .header-red .logo-img{height:64px;width:auto;display:block;}.meta{text-align:right;font-size:13px;color:rgba(255,255,255,.85)} .meta strong{display:block;color:#fff;font-size:14px;margin-bottom:2px}
+  .content{padding:36px 56px 48px}.badge{display:inline-block;background:#fee2e2;color:var(--tacam-red);padding:4px 12px;border-radius:999px;font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:10px}
+  .title{font-size:13px;letter-spacing:3px;text-transform:uppercase;color:var(--tacam-red);margin:0 0 8px;font-weight:700;} .subtitle{font-size:24px;font-weight:700;margin:0 0 22px;line-height:1.25;color:var(--ink)}
+  .info-line{display:flex;justify-content:space-between;gap:24px;flex-wrap:wrap;background:var(--celeste);border:1px solid var(--celeste-border);border-left:5px solid var(--celeste-ink);border-radius:10px;padding:14px 20px;margin-bottom:24px;}
+  .info-line div{font-size:13px;flex:1;min-width:140px}.info-line span{display:block;font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:var(--celeste-ink);font-weight:700;margin-bottom:2px}
+  .body-text{font-size:14px;line-height:1.65;color:#334155;margin:0 0 24px}
+  table{width:100%;border-collapse:separate;border-spacing:0;border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:32px;font-size:13px;}
+  thead th{background:var(--tacam-red);color:#fff;text-align:left;padding:12px 14px;font-size:11px;letter-spacing:2px;text-transform:uppercase;font-weight:600}
+  tbody td{padding:16px 14px;border-top:1px solid var(--line);vertical-align:middle;height:64px;}tbody tr:nth-child(even) td{background:#fafbfc}
+  td.name{font-weight:600;color:var(--ink);width:26%}td.rut{color:#475569;width:18%;font-variant-numeric:tabular-nums}td.fill{color:transparent}
+  tr.empty td{height:64px}tr.gendarmeria td{background:#f1f5f9 !important;height:90px;font-weight:700;letter-spacing:2px;color:var(--tacam-red);font-size:12px;}
+  .controls{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;margin-bottom:14px}.controls button{background:#b91c1c;color:#fff;border:0;border-radius:8px;padding:10px 14px;font-weight:600;cursor:pointer}.controls .secondary{background:#fff;color:#1f2937;border:1px solid #d1d5db}
+  .recipients{font-size:12px;color:#475569;margin-top:4px;margin-bottom:12px}
+  @media print{body{background:#fff}.page{box-shadow:none;margin:0;max-width:100%;border-radius:0}.controls{display:none}}
+  </style></head><body>
+  <div class="page"><div class="header-red"><div class="brand"><img src="https://tacam.cl/wp-content/uploads/2023/11/logo-tacam-1-registrad-blancoo_.png" alt="TACAM Estudio Jurídico" class="logo-img"/></div><div class="meta"><strong>estudiojuridico@tacam.cl</strong>${escapePreviewHtml(new Date().toLocaleString('es-CL'))}</div></div>
+  <div class="content"><div class="controls"><button type="button" onclick="window.print()">Descargar / Imprimir PDF</button><button type="button" class="secondary" onclick="window.close()">Cerrar</button></div>
+  <div class="recipients"><strong>Destinatarios:</strong> ${escapePreviewHtml(safeRecipients.join(', ') || 'Sin destinatarios')}</div>
+  <span class="badge">Entrevista Abogada</span><h2 class="title">Solicitud de visita presencial</h2><p class="subtitle">Antofagasta</p>
+  <div class="info-line"><div><span>Ciudad</span><strong>Antofagasta</strong></div><div><span>Fecha de visita</span><strong>${fechaVisita}</strong></div><div><span>Hora de entrevista</span><strong>${horaVisita} hrs</strong></div></div>
+  <p class="body-text"><b>De mi consideración:</b><br/>${paragraph}</p>
+  <table><thead><tr><th>Nombre</th><th>RUT</th><th>Módulo</th><th>Tiempo</th><th>Firma</th></tr></thead><tbody>${rows || '<tr class="empty"><td class="fill"></td><td class="fill"></td><td class="fill"></td><td class="fill"></td><td class="fill"></td></tr>'}<tr class="empty"><td class="fill"></td><td class="fill"></td><td class="fill"></td><td class="fill"></td><td class="fill"></td></tr><tr class="empty"><td class="fill"></td><td class="fill"></td><td class="fill"></td><td class="fill"></td><td class="fill"></td></tr><tr class="gendarmeria"><td>Gendarmería</td><td class="fill"></td><td class="fill"></td><td class="fill"></td><td class="fill"></td></tr></tbody></table>
+  </div></div></body></html>`;
+}
+
+function openGendarmeriaPreview(visits, subject, recipients) {
+  const previewHtml = buildGendarmeriaPreviewHtml(visits, subject, recipients);
+  const previewWindow = window.open('about:blank', '_blank', 'width=1080,height=760');
+
+  if (!previewWindow) {
+    showToast('No se pudo abrir la previsualización (bloqueador de ventanas).');
+    return false;
+  }
+
+  try {
+    previewWindow.document.open();
+    previewWindow.document.write(previewHtml);
+    previewWindow.document.close();
+    previewWindow.focus();
+    return true;
+  } catch (error) {
+    console.error('No se pudo renderizar la previsualización en ventana directa.', error);
+  }
+
+  try {
+    const blob = new Blob([previewHtml], { type: 'text/html;charset=utf-8' });
+    const blobUrl = URL.createObjectURL(blob);
+    const blobWindow = window.open(blobUrl, '_blank');
+    if (blobWindow) {
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
+      return true;
+    }
+    URL.revokeObjectURL(blobUrl);
+  } catch (error) {
+    console.error('No se pudo abrir la previsualización mediante Blob URL.', error);
+  }
+
+  showToast('No se pudo mostrar la previsualización del correo.');
+  return false;
 }
 
 async function sendGendarmeriaRoster(visits, subject, options = {}) {
@@ -2007,13 +2646,14 @@ async function sendGendarmeriaRoster(visits, subject, options = {}) {
     return false;
   }
   const textContent = buildGendarmeriaListMessage(visits);
+  const senderLawyer = getSenderLawyerIdentity();
   const lawyerEmails = [...new Set(visits
     .map(booking => {
       const lawyer = getLawyers().find(item => (item.name || '').trim() === (booking.assignedTo || '').trim());
       return String(lawyer?.email || '').trim();
     })
     .filter(Boolean))];
-  const allRecipients = [...new Set([...recipients, ...lawyerEmails])];
+  const allRecipients = [...new Set([...recipients, ...GENDARMERIA_CC_RECIPIENTS, ...lawyerEmails])];
   try {
     for (const toEmail of allRecipients) {
       const response = await fetch('brevo-email.php', {
@@ -2023,7 +2663,9 @@ async function sendGendarmeriaRoster(visits, subject, options = {}) {
           toEmail,
           toName: 'Gendarmería',
           subject,
-          textContent
+          textContent,
+          templateType: 'gendarmeria_roster',
+          templateData: buildGendarmeriaTemplateData(visits, senderLawyer)
         })
       });
       if (!response.ok) throw new Error(await response.text());
@@ -2039,29 +2681,25 @@ function renderGendarmeriaVisitOptions() {
   if (!gendarmeriaVisitSelect) return;
   const role = getCurrentSessionRole();
   const sessionLawyer = getCurrentSessionLawyerName();
-  const filterValue = role === 'Abogada' && sessionLawyer ? sessionLawyer : String(prisonLawyerFilter.value || '').trim();
-  const visits = getFilteredPrisonVisitsForReport()
-    .filter(booking => !filterValue || booking.assignedTo === filterValue)
-    .sort((a, b) => `${a.date || ''} ${a.time || ''}`.localeCompare(`${b.date || ''} ${b.time || ''}`, 'es'));
+  const filterValue = role === 'Abogada' && sessionLawyer ? sessionLawyer : String(prisonLawyerFilter?.value || '').trim();
+  const visits = getTomorrowPrisonVisitsForGendarmeria(filterValue);
 
-  const previousValue = gendarmeriaVisitSelect.value;
+  const previousValues = new Set(Array.from(gendarmeriaVisitSelect.selectedOptions || []).map(option => option.value));
   gendarmeriaVisitSelect.replaceChildren();
-
-  const placeholder = document.createElement('option');
-  placeholder.value = '';
-  placeholder.textContent = visits.length ? 'Seleccione una visita a la cárcel' : 'No hay visitas disponibles en el filtro actual';
-  gendarmeriaVisitSelect.appendChild(placeholder);
 
   visits.forEach(booking => {
     const option = document.createElement('option');
     option.value = booking.id;
     const modulo = booking.prisonModule || booking.representative?.modulo || '-';
     option.textContent = `${booking.date || '-'} ${booking.time || '--:--'} · ${booking.customer || 'Sin nombre'} · módulo ${modulo}`;
+    if (previousValues.has(booking.id)) option.selected = true;
     gendarmeriaVisitSelect.appendChild(option);
   });
 
-  if (visits.some(booking => booking.id === previousValue)) {
-    gendarmeriaVisitSelect.value = previousValue;
+  if (!previousValues.size) {
+    Array.from(gendarmeriaVisitSelect.options).forEach(option => {
+      option.selected = true;
+    });
   }
 }
 
@@ -2286,34 +2924,33 @@ function renderProfiles() {
     const empty = document.createElement('p');
     empty.textContent = 'No hay perfiles creados.';
     profileList.appendChild(empty);
+    if (profileShowMoreBtn) profileShowMoreBtn.hidden = true;
     return;
   }
 
-  profiles.forEach(profile => {
-    const card = document.createElement('article');
-    card.className = 'profile-card';
+  const list = document.createElement('ul');
+  list.className = 'profile-simple-list';
 
-    const content = document.createElement('div');
-    const title = document.createElement('h4');
-    title.textContent = `${profile.name} (${profile.role})`;
-    content.appendChild(title);
-
-    const user = document.createElement('small');
-    user.textContent = `Usuario: ${profile.username}`;
-    content.appendChild(user);
-
-    const perms = document.createElement('ul');
-    perms.className = 'profile-perms';
-    (profile.permissions || []).forEach(permission => {
-      const item = document.createElement('li');
-      item.textContent = permission;
-      perms.appendChild(item);
-    });
-
-    content.appendChild(perms);
-    card.appendChild(content);
-    profileList.appendChild(card);
+  const visibleProfiles = profilesExpanded ? profiles : profiles.slice(0, PROFILE_PREVIEW_SIZE);
+  visibleProfiles.forEach(profile => {
+    const item = document.createElement('li');
+    const permissions = (profile.permissions || []).join(', ') || 'Sin permisos definidos';
+    item.textContent = `${profile.name || 'Sin nombre'} · ${profile.role || 'Sin rol'} · ${profile.username || '-'} · Permisos: ${permissions}`;
+    list.appendChild(item);
   });
+
+  profileList.appendChild(list);
+
+  if (profileShowMoreBtn) {
+    if (profiles.length <= PROFILE_PREVIEW_SIZE) {
+      profileShowMoreBtn.hidden = true;
+    } else {
+      profileShowMoreBtn.hidden = false;
+      profileShowMoreBtn.textContent = profilesExpanded
+        ? 'Mostrar solo últimos 5'
+        : `Mostrar todos (${profiles.length})`;
+    }
+  }
 }
 
 function renderAll() {
@@ -2364,50 +3001,29 @@ clientForm.addEventListener('submit', event => {
   const imputadoModule = inPrison ? String(data.get('imputadoModule') || '').trim() : '';
   const representative = buildRepresentativeRecord(data, name);
 
-  if (!isValidRut(rut)) {
+  if (rut && !isValidRut(rut)) {
     clientRutInput.setCustomValidity('El RUT debe tener formato xx.xxx.xxx-x');
     clientRutInput.reportValidity();
     return;
   }
   clientRutInput.setCustomValidity('');
 
-  if (!isValidPhone(phone)) {
+  if (phone && !isValidPhone(phone)) {
     clientPhoneInput.setCustomValidity('El teléfono debe tener formato +5691111111');
     clientPhoneInput.reportValidity();
     return;
   }
   clientPhoneInput.setCustomValidity('');
-
-  if (!email) {
-    clientForm.elements.email.setCustomValidity('El correo es obligatorio');
-    clientForm.elements.email.reportValidity();
-    return;
-  }
   clientForm.elements.email.setCustomValidity('');
 
-  if (!name || !address) return;
-
-  if (inPrison && !imputadoModule) {
-    if (imputadoModuleInput) {
-      imputadoModuleInput.setCustomValidity('Debes indicar el módulo si la persona está en la cárcel.');
-      imputadoModuleInput.reportValidity();
-    }
-    return;
-  }
   if (imputadoModuleInput) imputadoModuleInput.setCustomValidity('');
-
-  if (imputadoStatus === 'imputado' && (!representative?.name || !representative?.lastName)) {
-    representativeNameInput.setCustomValidity('Debes indicar el nombre del representante.');
-    representativeNameInput.reportValidity();
-    return;
-  }
   representativeNameInput.setCustomValidity('');
   representativeLastNameInput.setCustomValidity('');
 
   const role = getCurrentSessionRole();
   const sessionLawyer = getCurrentSessionLawyerName();
   const clients = getClients();
-  const existing = clients.find(client => (client.rut || '').trim() === rut);
+  const existing = rut ? clients.find(client => (client.rut || '').trim() === rut) : null;
 
   if (existing) {
     existing.name = name;
@@ -2416,9 +3032,9 @@ clientForm.addEventListener('submit', event => {
     existing.email = email;
     existing.address = address;
     existing.inPrison = inPrison;
-    existing.prisonModule = inPrison ? imputadoModule : '';
+    existing.prisonModule = inPrison ? imputadoModule : (existing.prisonModule || '');
     existing.imputadoStatus = imputadoStatus;
-    existing.imputadoModule = inPrison ? imputadoModule : '';
+    existing.imputadoModule = inPrison ? imputadoModule : (existing.imputadoModule || '');
     existing.representative = imputadoStatus === 'imputado' ? representative : null;
     existing.updatedAt = new Date().toISOString();
   } else {
@@ -2434,13 +3050,16 @@ clientForm.addEventListener('submit', event => {
       imputadoStatus,
       imputadoModule: inPrison ? imputadoModule : '',
       representative: imputadoStatus === 'imputado' ? representative : null,
-      createdAt: new Date().toISOString()
+      assignedTo: role === 'Abogada' ? sessionLawyer : '',
+      createdByLawyer: role === 'Abogada' ? sessionLawyer : '',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
     });
   }
 
   saveClients(clients);
   clientForm.reset();
-  clientPhoneInput.value = '+569';
+  clientPhoneInput.value = '';
   imputadoStatusInput.value = 'no_imputado';
   inPrisonInput.value = 'no';
   updateImputadoModuleVisibility();
@@ -2465,26 +3084,21 @@ clientEditForm.addEventListener('submit', event => {
   const hiredLater = Boolean(data.get('hiredLater'));
   const assignedTo = normalizeAssignedToValue(data.get('assignedTo'));
 
-  if (!clientId || !name || !email || !address) return;
+  if (!clientId) return;
 
-  if (!isValidRut(rut)) {
+  if (rut && !isValidRut(rut)) {
     clientEditRutInput.setCustomValidity('RUT inválido');
     clientEditRutInput.reportValidity();
     return;
   }
   clientEditRutInput.setCustomValidity('');
 
-  if (!isValidPhone(phone)) {
+  if (phone && !isValidPhone(phone)) {
     clientEditPhoneInput.setCustomValidity('Teléfono inválido');
     clientEditPhoneInput.reportValidity();
     return;
   }
   clientEditPhoneInput.setCustomValidity('');
-  if (imputadoStatus === 'imputado' && (!representative?.name || !representative?.lastName)) {
-    clientEditRepresentativeNameInput.setCustomValidity('Debes indicar el nombre del representante.');
-    clientEditRepresentativeNameInput.reportValidity();
-    return;
-  }
   clientEditRepresentativeNameInput.setCustomValidity('');
 
   const clients = getClients();
@@ -2499,8 +3113,9 @@ clientEditForm.addEventListener('submit', event => {
   client.address = address;
   client.imputadoStatus = imputadoStatus;
   client.inPrison = inPrison;
-  client.prisonModule = inPrison ? (client.imputadoModule || client.prisonModule || '') : '';
-  client.imputadoModule = inPrison ? (client.imputadoModule || client.prisonModule || '') : '';
+  const editModule = String(data.get('imputadoModule') || '').trim();
+  client.prisonModule = inPrison ? editModule : (client.prisonModule || '');
+  client.imputadoModule = inPrison ? editModule : (client.imputadoModule || '');
   client.representative = representativeData;
   client.updatedAt = new Date().toISOString();
   saveClients(clients);
@@ -2554,9 +3169,7 @@ bookingForm.addEventListener('submit', async event => {
     bookingRepresentative.modulo = bookingRepresentativeModulo;
   }
   if (bookingImputadoStatus === 'imputado' && (!bookingRepresentative?.name || !bookingRepresentative?.lastName)) {
-    bookingRepresentativeNameInput.setCustomValidity('Debes indicar el nombre del representante.');
-    bookingRepresentativeNameInput.reportValidity();
-    return;
+    showToast('⚠️ Se agendó sin representante. Puedes agregarlo más tarde desde Imputados.');
   }
   bookingRepresentativeNameInput.setCustomValidity('');
 
@@ -2584,12 +3197,16 @@ bookingForm.addEventListener('submit', async event => {
     prisonAttendance: '',
     status: 'nueva',
     createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
     reminder24hSentAt: '',
     reminder1hSentAt: '',
     checkedInAt: ''
   });
   saveBookings(bookings);
-  await notifyVisitScheduled(bookings[0]);
+  renderAll();
+  notifyVisitScheduled(bookings[0]).catch(error => {
+    console.error('No se pudo enviar notificación al agendar reserva:', error);
+  });
   bookingForm.reset();
   clientSearchInput.value = '';
   clientSearchResults.replaceChildren();
@@ -2599,9 +3216,8 @@ bookingForm.addEventListener('submit', async event => {
   bookingImputadoStatusInput.dataset.manualChange = '0';
   bookingImputadoStatusInput.value = 'no_imputado';
   updateBookingRepresentativeVisibility();
-  renderAll();
   playSaveChime();
-  showToast('✅ Reserva guardada correctamente.');
+  showToast('✅ Cita guardada y agendada correctamente.', { forcePopup: true });
 });
 
 prisonBookingForm.addEventListener('submit', async event => {
@@ -2619,16 +3235,9 @@ prisonBookingForm.addEventListener('submit', async event => {
   }
 
   const prisonModule = String(data.get('prisonModule') || '').trim() || getClientModuleValue(client);
-  if (!prisonModule) {
-    if (prisonClientModuleInput) {
-      prisonClientModuleInput.setCustomValidity('Debes indicar el módulo del interno.');
-      prisonClientModuleInput.reportValidity();
-    }
-    return;
-  }
   if (prisonClientModuleInput) prisonClientModuleInput.setCustomValidity('');
 
-  if (String(client.prisonModule || '').trim() !== prisonModule || String(client.imputadoModule || '').trim() !== prisonModule) {
+  if (prisonModule && (String(client.prisonModule || '').trim() !== prisonModule || String(client.imputadoModule || '').trim() !== prisonModule)) {
     client.prisonModule = prisonModule;
     client.imputadoModule = prisonModule;
     client.updatedAt = new Date().toISOString();
@@ -2657,17 +3266,20 @@ prisonBookingForm.addEventListener('submit', async event => {
     prisonAttendance: '',
     status: 'confirmada',
     createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
     reminder24hSentAt: '',
     reminder1hSentAt: '',
     checkedInAt: ''
   });
   saveBookings(bookings);
-  await notifyVisitScheduled(bookings[0]);
+  renderAll();
+  notifyVisitScheduled(bookings[0]).catch(error => {
+    console.error('No se pudo enviar notificación al agendar visita a la cárcel:', error);
+  });
   prisonBookingForm.reset();
   setPrisonClientSelection(null);
-  renderAll();
   playSaveChime();
-  showToast('Visita a la cárcel agendada correctamente.');
+  showToast('✅ Visita a la cárcel guardada y agendada correctamente.', { forcePopup: true });
 });
 
 clientRutInput.addEventListener('input', () => {
@@ -2703,15 +3315,39 @@ bookingRepresentativePhoneInput.addEventListener('input', () => {
   bookingRepresentativePhoneInput.value = formatPhone(bookingRepresentativePhoneInput.value);
 });
 
-if (clientSearchInput) clientSearchInput.addEventListener('input', renderClientOptions);
+clientSearchInput.addEventListener('input', renderClientOptions);
 if (prisonClientSearchInput) prisonClientSearchInput.addEventListener('input', queuePrisonClientSearch);
-if (prisonClientSelect) {
-  prisonClientSelect.addEventListener('change', () => {
-    const client = getVisibleClientsForSession().find(item => item.id === prisonClientSelect.value);
-    setPrisonClientSelection(client || null, { updateSearch: false });
+prisonClientSelect.addEventListener('change', () => {
+  const client = getClients().find(item => item.id === prisonClientSelect.value);
+  setPrisonClientSelection(client || null, { updateSearch: false });
+});
+clientEditSelect.addEventListener('change', () => fillClientEditForm(clientEditSelect.value));
+if (deleteClientBtn) {
+  deleteClientBtn.addEventListener('click', () => {
+    const clientId = String(clientEditSelect.value || '').trim();
+    if (!clientId) {
+      showToast('Selecciona un contacto para borrar.');
+      return;
+    }
+    const clients = getClients();
+    const client = clients.find(item => item.id === clientId);
+    if (!client) {
+      showToast('El contacto ya no existe.');
+      renderAll();
+      return;
+    }
+    if (!window.confirm(`¿Borrar definitivamente a ${client.name || 'este contacto'} y sus reservas asociadas?`)) return;
+
+    saveClients(clients.filter(item => item.id !== clientId));
+    saveBookings(getBookings().filter(booking => booking.clientId !== clientId));
+    clientEditForm.reset();
+    clientEditSelect.value = '';
+    if (deleteClientBtn) deleteClientBtn.disabled = true;
+    renderAll();
+    playSaveChime();
+    showToast('Contacto borrado correctamente.');
   });
 }
-if (clientEditSelect) clientEditSelect.addEventListener('change', () => fillClientEditForm(clientEditSelect.value));
 clientEditRutInput.addEventListener('input', () => {
   clientEditRutInput.value = formatRut(clientEditRutInput.value);
 });
@@ -2738,27 +3374,19 @@ hiredLawyerInput.addEventListener('change', () => {
   if (!hiredLawyerInput.checked) assignedToSelect.value = '';
 });
 
-if (lawyerFilter) {
-  lawyerFilter.addEventListener('change', () => {
-    renderAgenda();
-    renderAgendaCalendar();
-  });
-}
+if (lawyerFilter) lawyerFilter.addEventListener('change', () => {
+  renderAgenda();
+  renderAgendaCalendar();
+});
 if (agendaMonthInput) agendaMonthInput.addEventListener('change', renderAgendaCalendar);
-if (prisonMonthInput) {
-  prisonMonthInput.addEventListener('change', () => {
-    renderPrisonCalendar();
-    renderPrisonVisitsList();
-    renderGendarmeriaVisitOptions();
-  });
-}
-if (prisonLawyerFilter) {
-  prisonLawyerFilter.addEventListener('change', () => {
-    renderPrisonCalendar();
-    renderPrisonVisitsList();
-    renderGendarmeriaVisitOptions();
-  });
-}
+if (prisonMonthInput) prisonMonthInput.addEventListener('change', () => {
+  renderPrisonCalendar();
+  renderPrisonVisitsList();
+});
+if (prisonLawyerFilter) prisonLawyerFilter.addEventListener('change', () => {
+  renderPrisonCalendar();
+  renderPrisonVisitsList();
+});
 document.addEventListener('click', event => {
   const target = event.target;
   if (!(target instanceof Node)) return;
@@ -2767,39 +3395,65 @@ document.addEventListener('click', event => {
   }
 });
 
-if (sendGendarmeriaEmailBtn) {
-  sendGendarmeriaEmailBtn.addEventListener('click', async () => {
-    const bookingId = String(gendarmeriaVisitSelect?.value || '').trim();
-    if (!bookingId) {
-      showToast('Selecciona una visita para enviar a Gendarmería.');
-      gendarmeriaVisitSelect?.focus();
-      return;
-    }
-
-    const booking = getBookings().find(item => item.id === bookingId);
-    if (!booking) {
-      showToast('La visita seleccionada ya no existe.');
-      renderGendarmeriaVisitOptions();
-      return;
-    }
-
-    if (!window.confirm(`¿Confirmar envío a Gendarmería para ${booking.customer || 'este contacto'}?`)) return;
-
-    const subject = `TACAM: Visita a la cárcel ${booking.date || ''} ${booking.time || ''}`.trim();
-    try {
-      const sent = await sendGendarmeriaRoster([booking], subject);
-      if (!sent) throw new Error('No se pudo enviar');
-      showToast('Correo enviado a Gendarmería.');
-    } catch (error) {
-      console.error('No se pudo enviar a Gendarmería', error);
-      showToast('Error al enviar correo a Gendarmería.');
-    }
-  });
+function getSelectedGendarmeriaVisits() {
+  const bookingIds = Array.from(gendarmeriaVisitSelect?.selectedOptions || []).map(option => option.value).filter(Boolean);
+  const visits = getVisibleBookingsForSession(getBookings()).filter(item => bookingIds.includes(item.id) && isPrisonVisit(item));
+  return { bookingIds, visits };
 }
-lawyerCalendarFilter.addEventListener('change', renderLawyerCalendar);
-lawyerCalendarMonth.addEventListener('change', renderLawyerCalendar);
-sharedOnlyInput.addEventListener('change', renderLawyerCalendar);
-reportLawyerFilter.addEventListener('change', renderReports);
+
+if (previewGendarmeriaEmailBtn) previewGendarmeriaEmailBtn.addEventListener('click', () => {
+  const { bookingIds, visits } = getSelectedGendarmeriaVisits();
+  if (!bookingIds.length || !visits.length) {
+    showToast('Selecciona visitas para previsualizar el correo de Gendarmería.');
+    gendarmeriaVisitSelect?.focus();
+    return;
+  }
+  const recipients = getGendarmeriaRecipients();
+  const subject = `TACAM: Nómina visita a la cárcel ${visits[0]?.date || ''}`.trim();
+  openGendarmeriaPreview(visits, subject, recipients);
+});
+
+if (sendGendarmeriaEmailBtn) sendGendarmeriaEmailBtn.addEventListener('click', async () => {
+  const { bookingIds, visits } = getSelectedGendarmeriaVisits();
+  if (!bookingIds.length) {
+    showToast('Selecciona una o más visitas para enviar a Gendarmería.');
+    gendarmeriaVisitSelect?.focus();
+    return;
+  }
+
+  if (!visits.length) {
+    showToast('Las visitas seleccionadas ya no existen.');
+    renderGendarmeriaVisitOptions();
+    return;
+  }
+
+  const recipients = getGendarmeriaRecipients();
+  const subject = `TACAM: Nómina visita a la cárcel ${visits[0]?.date || ''}`.trim();
+  openGendarmeriaPreview(visits, subject, recipients);
+
+  if (!window.confirm(`¿Confirmar envío manual a Gendarmería para ${visits.length} visita(s) de mañana?`)) return;
+
+  try {
+    const sent = await sendGendarmeriaRoster(visits, subject);
+    if (!sent) throw new Error('No se pudo enviar');
+    const sentAt = new Date().toISOString();
+    const bookings = getBookings();
+    bookings.forEach(current => {
+      if (bookingIds.includes(current.id)) current.gendarmeriaNotifiedAt = sentAt;
+    });
+    saveBookings(bookings);
+    renderAll();
+    showToast('Nómina enviada a Gendarmería.');
+  } catch (error) {
+    console.error('No se pudo enviar a Gendarmería', error);
+    showToast('Error al enviar a Gendarmería.');
+  }
+});
+
+if (lawyerCalendarFilter) lawyerCalendarFilter.addEventListener('change', renderLawyerCalendar);
+if (lawyerCalendarMonth) lawyerCalendarMonth.addEventListener('change', renderLawyerCalendar);
+if (sharedOnlyInput) sharedOnlyInput.addEventListener('change', renderLawyerCalendar);
+if (reportLawyerFilter) reportLawyerFilter.addEventListener('change', renderReports);
 
 imputadosBody.addEventListener('click', event => {
   const target = event.target;
@@ -3089,6 +3743,7 @@ lawyerForm.addEventListener('submit', async event => {
     });
   }
   saveProfiles(profiles);
+  syncLawyerAndProfileUsers();
   lawyerForm.reset();
   renderAll();
   playSaveChime();
@@ -3165,6 +3820,7 @@ profileForm.addEventListener('submit', event => {
     }
     saveLawyers(lawyers);
   }
+  syncLawyerAndProfileUsers();
   profileForm.reset();
   renderLawyers();
   renderLawyerCalendar();
@@ -3176,14 +3832,32 @@ profileForm.addEventListener('submit', event => {
 });
 
 switchModule('create');
+removeRequiredConstraints();
 
 const currentMonth = monthValueFromDate(new Date());
 agendaMonthInput.value = currentMonth;
 prisonMonthInput.value = currentMonth;
 lawyerCalendarMonth.value = currentMonth;
-gendarmeriaEmailInput.value = GENDARMERIA_RECIPIENTS[0];
-gendarmeriaEmail2Input.value = GENDARMERIA_RECIPIENTS[1];
-clientPhoneInput.value = '+569';
+clientPhoneInput.value = '';
+if (APP_CONFIG.internalToken) {
+  console.info(`APP_INTERNAL_TOKEN cargado para WhatsApp interno (longitud: ${APP_CONFIG.internalToken.length}).`);
+} else {
+  console.warn('APP_INTERNAL_TOKEN no configurado para endpoint interno de WhatsApp.');
+}
+if (deleteClientBtn) deleteClientBtn.disabled = true;
+if (profileShowMoreBtn) {
+  profileShowMoreBtn.addEventListener('click', () => {
+    profilesExpanded = !profilesExpanded;
+    renderProfiles();
+  });
+}
+
+if (clientsShowMoreBtn) {
+  clientsShowMoreBtn.addEventListener('click', () => {
+    clientsVisibleLimit += CLIENTS_PAGE_SIZE;
+    renderClients();
+  });
+}
 assignedToSelect.disabled = !hiredLawyerInput.checked;
 updateImputadoModuleVisibility();
 updateRepresentativeVisibility();
@@ -3193,6 +3867,18 @@ updateBookingRepresentativeVisibility();
 updateSyncIndicator('pending', 'Sincronización: pendiente');
 updateChileClock();
 ensureDefaultLawyerAccessProfiles();
+syncLawyerAndProfileUsers();
+if (savePopup) {
+  savePopup.addEventListener('click', () => {
+    savePopup.hidden = true;
+  });
+}
+if (savePopupOkBtn) {
+  savePopupOkBtn.addEventListener('click', event => {
+    event.stopPropagation();
+    if (savePopup) savePopup.hidden = true;
+  });
+}
 
 window.addEventListener('tacam-server-hydrated', () => {
   if (!appShell.hidden) {
