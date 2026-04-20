@@ -19,7 +19,7 @@
 
 body {
   margin: 0;
-  font-family: Manrope, Inter, Roboto, "Segoe UI", Arial, sans-serif;
+  font-family: "Avenir Next", "Segoe UI", Inter, Roboto, Arial, sans-serif;
   color: var(--text);
   background: var(--bg);
 }
@@ -32,49 +32,24 @@ body {
   display: grid;
   place-items: center;
   padding: 24px;
-  background: linear-gradient(110deg, #EAEFF4 0 44%, #F8FAFC 44% 100%);
+  background: radial-gradient(circle at top right, rgba(179,32,37,.18), transparent 35%), linear-gradient(135deg, #8F1A1E, #1F2937 65%);
 }
 
 .login-panel {
-  width: min(980px, 100%);
-  min-height: 520px;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
+  width: min(470px, 100%);
+  min-height: auto;
+  display: block;
   border: 1px solid var(--line);
   border-radius: 16px;
-  overflow: hidden;
-  background: var(--surface);
-  box-shadow: var(--shadow-md);
-}
-
-.login-panel::before {
-  content: "TACAM\ASistema Legal Corporativo\A\AGestión profesional de casos, agendas y visitas";
-  white-space: pre;
-  display: flex;
-  align-items: flex-start;
-  justify-content: flex-start;
-  padding: 170px 42px 42px;
-  font-size: 30px;
-  font-weight: 700;
-  line-height: 1.28;
-  color: #F9FAFB;
-  background: #1F2937;
-  background-image: url('https://tacam.cl/wp-content/uploads/2023/11/logo-tacam-1-registrad-blancoo_.png');
-  background-repeat: no-repeat;
-  background-size: 165px auto;
-  background-position: 34px 34px;
-  border-right: 1px solid rgba(255,255,255,.08);
-}
-
-.login-panel > * {
-  grid-column: 2;
-  padding: 34px 30px;
+  background: rgba(255,255,255,.97);
+  box-shadow: 0 24px 56px rgba(0,0,0,.26);
+  padding: 28px 24px;
 }
 
 .login-panel img {
-  width: 220px;
+  width: 210px;
   display: block;
-  margin: 0 auto 16px;
+  margin: 0 auto 14px;
   background: #111827;
   border-radius: 10px;
   padding: 10px 14px;
@@ -169,11 +144,15 @@ main {
   content: "TACAM\ASISTEMA LEGAL";
   white-space: pre;
   margin: -68px 4px 12px;
-  padding: 10px 12px;
+  padding: 74px 12px 10px;
   border-radius: 10px;
   color: #F9FAFB;
   border: 1px solid rgba(255,255,255,.14);
-  background: rgba(255,255,255,.02);
+  background-color: rgba(255,255,255,.02);
+  background-image: url('https://tacam.cl/wp-content/uploads/2023/11/logo-tacam-1-registrad-blancoo_.png');
+  background-repeat: no-repeat;
+  background-size: 120px auto;
+  background-position: 10px 10px;
   font-size: 14px;
   font-weight: 700;
   line-height: 1.25;
@@ -256,8 +235,10 @@ button {
   background: var(--accent);
   border-color: var(--accent);
   color: #fff;
+  transition: transform .12s ease, box-shadow .18s ease, background .18s ease;
+  box-shadow: 0 2px 8px rgba(179,32,37,.18);
 }
-button:hover { background: #991B1F; border-color: #991B1F; }
+button:hover { background: #991B1F; border-color: #991B1F; transform: translateY(-1px); box-shadow: 0 8px 16px rgba(179,32,37,.20); }
 button:disabled { opacity: .7; cursor: not-allowed; }
 
 .switch-btn {
@@ -427,6 +408,17 @@ th {
   box-shadow: var(--shadow-md);
   font-size: 13px;
   max-width: min(92vw, 380px);
+  animation: tacam-toast-in .35s ease, tacam-toast-out .45s ease 1.9s forwards;
+}
+
+@keyframes tacam-toast-in {
+  from { opacity: 0; transform: translateX(18px); filter: blur(2px); }
+  to { opacity: 1; transform: translateX(0); filter: blur(0); }
+}
+
+@keyframes tacam-toast-out {
+  from { opacity: 1; transform: translateX(0); }
+  to { opacity: 0; transform: translateX(16px); }
 }
 
 .save-popup {
@@ -476,16 +468,6 @@ th {
   }
   .module-tabs::before { margin: 0 0 8px; grid-column: 1 / -1; }
   main { padding: 12px; }
-}
-
-@media (max-width: 840px) {
-  .login-panel {
-    width: min(500px, 100%);
-    min-height: auto;
-    display: block;
-  }
-  .login-panel::before { display: none; }
-  .login-panel > * { grid-column: auto; padding: 22px; }
 }
 
 @media (max-width: 768px) {
