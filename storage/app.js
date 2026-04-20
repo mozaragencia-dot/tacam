@@ -2503,33 +2503,37 @@ function buildGendarmeriaListMessage(visits) {
   const header = [
     `FICHA VISITA INTERNO - ${titleMonth}`,
     '',
-    'NOMBRE INTERNO | FECHA | HORA | MÓDULO | TIEMPO VISITA | ABOGADA'
+    'NOMBRE INTERNO | RUT'
   ];
-  const rows = visits.map((booking, index) => {
-    const modulo = booking.prisonModule || booking.representative?.modulo || '-';
-    const visitTime = booking.notes ? String(booking.notes).slice(0, 40) : '30 minutos';
-    return `${index + 1}. ${booking.customer || '-'} | ${booking.date || '-'} | ${booking.time || '--:--'} | ${modulo} | ${visitTime} | ${booking.assignedTo || 'Sin asignar'} (RUT: ${booking.rut || '-'})`;
-  });
+  const rows = visits.map((booking, index) => `${index + 1}. ${booking.customer || '-'} | ${booking.rut || '-'}`);
   return [...header, ...rows, '', 'TACAM - Sistema de Reservas'].join('\n');
 }
 
-function buildGendarmeriaTemplateData(visits) {
-  const safeVisits = Array.isArray(visits) ? visits.slice(0, 5) : [];
+function buildGendarmeriaTemplateData(visits, senderLawyer = '') {
+  const safeVisits = Array.isArray(visits) ? visits.slice(0, 6) : [];
   const folioBase = Date.now().toString().slice(-8);
+  const normalizedSender = String(senderLawyer || '').trim();
   return {
     fechaHoy: String(safeVisits[0]?.date || getTomorrowDateString()),
     totalVisitas: String(Array.isArray(visits) ? visits.length : 0),
     folioDocumento: `TAC-${folioBase}`,
-    abogadaFirma: String(safeVisits[0]?.assignedTo || ''),
+    abogadaFirma: normalizedSender,
     visits: safeVisits.map((booking, index) => ({
       numero: index + 1,
       hora: String(booking?.time || '--:--'),
       nombre: String(booking?.customer || '-'),
-      rut: String(booking?.rut || '-'),
-      modulo: String(booking?.prisonModule || booking?.representative?.modulo || '-'),
-      tiempo: String(booking?.notes || '30 minutos')
+      rut: String(booking?.rut || '-')
     }))
   };
+}
+
+function escapePreviewHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 function getGendarmeriaRecipients() {
@@ -2544,15 +2548,64 @@ function getGendarmeriaRecipients() {
 function buildGendarmeriaPreviewHtml(visits, subject, recipients) {
   const safeVisits = Array.isArray(visits) ? visits : [];
   const safeRecipients = Array.isArray(recipients) ? recipients : [];
+  const senderLawyer = String(getCurrentSessionLawyerName() || '').trim();
+  const firstVisit = safeVisits[0] || {};
+  const fechaVisita = escapePreviewHtml(firstVisit.date || getTomorrowDateString());
+  const horaVisita = escapePreviewHtml(firstVisit.time || '--:--');
+  const bodyParagraph = senderLawyer
+    ? `La abogada <b>${escapePreviewHtml(senderLawyer)}</b> solicita coordinar visita presencial con los internos que se indican a continuación.`
+    : 'Solicitamos coordinar visita presencial con los internos que se indican a continuación.';
+
   const rows = safeVisits.map((booking, index) => {
-    const modulo = booking.prisonModule || booking.representative?.modulo || '-';
-    const lawyer = booking.assignedTo || 'Sin asignar';
-    const dateText = booking.date || '-';
-    const weekday = dateText ? new Date(`${dateText}T12:00:00`).toLocaleDateString('es-CL', { weekday: 'long' }) : '-';
-    return `<tr><td>${index + 1}</td><td>${booking.customer || '-'}</td><td>${booking.rut || '-'}</td><td>${dateText}</td><td>${weekday}</td><td>${booking.time || '--:--'}</td><td>${modulo}</td><td>${lawyer}</td></tr>`;
+    return `<tr><td>${index + 1}</td><td>${escapePreviewHtml(booking.customer || '-')}</td><td>${escapePreviewHtml(booking.rut || '-')}</td></tr>`;
   }).join('');
 
-  return `<!doctype html><html lang="es"><head><meta charset="utf-8" /><title>Previsualización correo Gendarmería</title><style>body{font-family:Arial,sans-serif;padding:16px;color:#1f2937}h1{margin:0 0 6px}p{margin:6px 0}table{width:100%;border-collapse:collapse;margin-top:10px}th,td{border:1px solid #d1d5db;padding:8px;font-size:13px;text-align:left}th{background:#f3f4f6}.meta{background:#f9fafb;padding:10px;border:1px solid #e5e7eb;border-radius:8px}</style></head><body><h1>Previsualización de envío a Gendarmería</h1><div class="meta"><p><strong>Asunto:</strong> ${subject}</p><p><strong>Destinatarios seleccionados:</strong> ${safeRecipients.join(', ') || 'Sin destinatarios'}</p><p><strong>Total de visitas:</strong> ${safeVisits.length}</p></div><table><thead><tr><th>#</th><th>Interno/a</th><th>RUT</th><th>Fecha</th><th>Día</th><th>Hora</th><th>Módulo</th><th>Abogada</th></tr></thead><tbody>${rows || '<tr><td colspan="8">Sin visitas seleccionadas.</td></tr>'}</tbody></table><p style="margin-top:14px;color:#6b7280">Esta es una previsualización local de cómo se verá el contenido principal del correo.</p></body></html>`;
+  return `<!doctype html><html lang="es"><head><meta charset="utf-8" /><title>Previsualización correo Gendarmería</title><style>
+  :root{--ink:#0f172a;--muted:#64748b;--line:#e2e8f0;--tacam-red:#b91c1c;--tacam-red-dark:#7f1d1d;--celeste:#e0f2fe;--celeste-border:#7dd3fc;--celeste-ink:#075985;--bg:#f6f7fb;--card:#ffffff;}
+  *{box-sizing:border-box} html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Inter,sans-serif;-webkit-font-smoothing:antialiased;}
+  .page{max-width:880px;margin:24px auto;background:var(--card);border-radius:18px;box-shadow:0 20px 60px -25px rgba(15,23,42,.25);overflow:hidden;}
+  .header-red{background:linear-gradient(135deg,var(--tacam-red),var(--tacam-red-dark));padding:22px 32px;display:flex;justify-content:space-between;align-items:center;color:#fff;}
+  .header-red img{height:52px;display:block}
+  .meta{text-align:right;font-size:13px;color:rgba(255,255,255,.85)} .meta strong{display:block;color:#fff;font-size:14px}
+  .content{padding:30px 36px 40px} .badge{display:inline-block;background:#fee2e2;color:var(--tacam-red);padding:4px 12px;border-radius:999px;font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:10px}
+  .title{font-size:13px;letter-spacing:3px;text-transform:uppercase;color:var(--tacam-red);margin:0 0 8px;font-weight:700;} .subtitle{font-size:24px;font-weight:700;margin:0 0 22px;}
+  .info-line{display:flex;justify-content:space-between;gap:18px;flex-wrap:wrap;background:var(--celeste);border:1px solid var(--celeste-border);border-left:5px solid var(--celeste-ink);border-radius:10px;padding:14px 20px;margin-bottom:24px}
+  .info-line div{font-size:13px;flex:1;min-width:140px} .info-line span{display:block;font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:var(--celeste-ink);font-weight:700;margin-bottom:2px}
+  .body-text{font-size:14px;line-height:1.65;color:#334155;margin:0 0 24px}
+  table{width:100%;border-collapse:separate;border-spacing:0;border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:24px;font-size:13px}
+  thead th{background:var(--tacam-red);color:#fff;text-align:left;padding:12px 14px;font-size:11px;letter-spacing:2px;text-transform:uppercase;font-weight:600}
+  tbody td{padding:16px 14px;border-top:1px solid var(--line);height:56px;} tbody tr:nth-child(even) td{background:#fafbfc}
+  .controls{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;margin-bottom:14px}
+  button{background:#b91c1c;color:#fff;border:0;border-radius:8px;padding:10px 14px;font-weight:600;cursor:pointer}
+  .secondary{background:#fff;color:#1f2937;border:1px solid #d1d5db}
+  .recipients{font-size:12px;color:#475569;margin-top:4px}
+  @media print{body{background:#fff}.page{box-shadow:none;margin:0;max-width:100%;border-radius:0}.controls{display:none}}
+  </style></head><body>
+  <div class="page">
+    <div class="header-red">
+      <img src="https://tacam.cl/wp-content/uploads/2023/11/logo-tacam-1-registrad-blancoo_.png" alt="TACAM"/>
+      <div class="meta"><strong>estudiojuridico@tacam.cl</strong>${escapePreviewHtml(new Date().toLocaleString('es-CL'))}</div>
+    </div>
+    <div class="content">
+      <div class="controls">
+        <button type="button" onclick="window.print()">Descargar / Imprimir PDF</button>
+        <button type="button" class="secondary" onclick="window.close()">Cerrar</button>
+      </div>
+      <div class="recipients"><strong>Destinatarios:</strong> ${escapePreviewHtml(safeRecipients.join(', ') || 'Sin destinatarios')}</div>
+      <span class="badge">Entrevista Abogada</span>
+      <h2 class="title">Solicitud de visita presencial</h2>
+      <p class="subtitle">Antofagasta</p>
+      <div class="info-line">
+        <div><span>Ciudad</span><strong>Antofagasta</strong></div>
+        <div><span>Fecha de visita</span><strong>${fechaVisita}</strong></div>
+        <div><span>Hora de entrevista</span><strong>${horaVisita} hrs</strong></div>
+      </div>
+      <p class="body-text"><b>De mi consideración:</b><br/>${bodyParagraph}</p>
+      <table><thead><tr><th>Nombre</th><th>RUT</th></tr></thead><tbody>${rows || '<tr><td colspan="2">Sin internos seleccionados.</td></tr>'}</tbody></table>
+      <p style="font-size:12px;color:#6b7280;margin:0;">Previsualización del correo final. Use “Descargar / Imprimir PDF” para guardarlo.</p>
+    </div>
+  </div>
+  </body></html>`;
 }
 
 function openGendarmeriaPreview(visits, subject, recipients) {
@@ -2575,6 +2628,7 @@ async function sendGendarmeriaRoster(visits, subject, options = {}) {
     return false;
   }
   const textContent = buildGendarmeriaListMessage(visits);
+  const senderLawyer = String(getCurrentSessionLawyerName() || '').trim();
   const lawyerEmails = [...new Set(visits
     .map(booking => {
       const lawyer = getLawyers().find(item => (item.name || '').trim() === (booking.assignedTo || '').trim());
@@ -2593,7 +2647,7 @@ async function sendGendarmeriaRoster(visits, subject, options = {}) {
           subject,
           textContent,
           templateType: 'gendarmeria_roster',
-          templateData: buildGendarmeriaTemplateData(visits)
+          templateData: buildGendarmeriaTemplateData(visits, senderLawyer)
         })
       });
       if (!response.ok) throw new Error(await response.text());

@@ -24,7 +24,9 @@ function build_gendarmeria_roster_html(string $subject, array $templateData): st
     $fechaHoy = escape_html(trim((string)($templateData['fechaHoy'] ?? date('Y-m-d'))) ?: date('Y-m-d'));
     $totalVisitas = (int)($templateData['totalVisitas'] ?? 0);
     $folioDocumento = escape_html(trim((string)($templateData['folioDocumento'] ?? ('TAC-' . date('YmdHis')))) ?: ('TAC-' . date('YmdHis')));
-    $abogadaFirma = escape_html(trim((string)($templateData['abogadaFirma'] ?? 'Abogada TACAM')) ?: 'Abogada TACAM');
+    $abogadaFirmaRaw = trim((string)($templateData['abogadaFirma'] ?? ''));
+    $abogadaFirma = escape_html($abogadaFirmaRaw);
+
     $visits = $templateData['visits'] ?? [];
     if (!is_array($visits)) {
         $visits = [];
@@ -36,93 +38,81 @@ function build_gendarmeria_roster_html(string $subject, array $templateData): st
 
     for ($i = 0; $i < $rowCount; $i++) {
         $visit = $visits[$i] ?? [];
-        $numero = escape_html((string)($visit['numero'] ?? ($i + 1)));
-        $hora = escape_html(trim((string)($visit['hora'] ?? '--:--')) ?: '--:--');
-        $nombre = escape_html(trim((string)($visit['nombre'] ?? '')));
-        $rut = escape_html(trim((string)($visit['rut'] ?? '')));
-        $modulo = escape_html(trim((string)($visit['modulo'] ?? '-')) ?: '-');
-        $tiempo = escape_html(trim((string)($visit['tiempo'] ?? '30 minutos')) ?: '30 minutos');
+        $nombre = escape_html(trim((string)($visit['nombre'] ?? '')) ?: '-');
+        $rut = escape_html(trim((string)($visit['rut'] ?? '')) ?: '-');
+        $background = $i % 2 === 0 ? '#ffffff' : '#fafbfc';
 
         $rowsHtml .= '<tr>'
-            . '<td style="padding:10px;border:1px solid #cbd5e1;text-align:center;font-size:12px;">' . $numero . '</td>'
-            . '<td style="padding:10px;border:1px solid #cbd5e1;font-size:13px;font-weight:600;color:#0f172a;">' . $nombre . '</td>'
-            . '<td style="padding:10px;border:1px solid #cbd5e1;font-size:12px;color:#334155;">' . $rut . '</td>'
-            . '<td style="padding:10px;border:1px solid #cbd5e1;font-size:12px;text-align:center;">' . $hora . '</td>'
-            . '<td style="padding:10px;border:1px solid #cbd5e1;font-size:12px;text-align:center;">' . $modulo . '</td>'
-            . '<td style="padding:10px;border:1px solid #cbd5e1;font-size:12px;text-align:center;">' . $tiempo . '</td>'
-            . '<td style="padding:10px;border:1px solid #cbd5e1;font-size:12px;height:40px;">&nbsp;</td>'
+            . '<td style="padding:16px 14px;border-top:1px solid #e2e8f0;background:' . $background . ';font-size:13px;font-weight:600;color:#0f172a;">' . $nombre . '</td>'
+            . '<td style="padding:16px 14px;border-top:1px solid #e2e8f0;background:' . $background . ';font-size:13px;color:#475569;">' . $rut . '</td>'
             . '</tr>';
     }
+
+    $bodyParagraph = $abogadaFirmaRaw !== ''
+        ? 'La abogada <b>' . $abogadaFirma . '</b> solicita coordinar visita presencial con los internos que se indican a continuación.'
+        : 'Solicitamos coordinar visita presencial con los internos que se indican a continuación.';
 
     return <<<HTML
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>{$safeSubject}</title>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>{$safeSubject}</title>
 </head>
-<body style="margin:0;padding:0;background:#f3f4f6;font-family:Arial,'Segoe UI',sans-serif;color:#0f172a;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f3f4f6;padding:20px 0;">
+<body style="margin:0;padding:0;background:#f6f7fb;color:#0f172a;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Inter,sans-serif;-webkit-font-smoothing:antialiased;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f6f7fb;padding:20px 0;">
     <tr>
       <td align="center">
-        <table role="presentation" width="820" cellpadding="0" cellspacing="0" style="width:820px;max-width:98%;background:#ffffff;border:1px solid #d1d5db;border-radius:10px;overflow:hidden;">
+        <table role="presentation" width="880" cellpadding="0" cellspacing="0" style="width:880px;max-width:98%;background:#ffffff;border-radius:18px;overflow:hidden;box-shadow:0 20px 60px -25px rgba(15,23,42,.25);">
           <tr>
-            <td style="background:#b32025;padding:18px 24px;text-align:center;">
-              <img src="https://tacam.cl/wp-content/uploads/2023/11/logo-tacam-1-registrad-blancoo_.png" alt="TACAM" style="height:52px;display:block;margin:0 auto;" />
-            </td>
-          </tr>
-          <tr>
-            <td style="padding:20px 24px 6px;">
-              <div style="font-size:11px;letter-spacing:1.8px;color:#b32025;font-weight:700;text-transform:uppercase;">Planilla de Visita Presencial</div>
-              <h1 style="margin:6px 0 4px;font-size:22px;line-height:1.2;color:#111827;">Envío a Gendarmería</h1>
-              <p style="margin:0;color:#4b5563;font-size:13px;">Formato oficial TACAM · {$metaDate}</p>
-            </td>
-          </tr>
-          <tr>
-            <td style="padding:10px 24px 14px;">
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #bae6fd;background:#eff6ff;border-radius:8px;">
+            <td style="background:linear-gradient(135deg,#b91c1c,#7f1d1d);padding:28px 56px;color:#fff;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
                 <tr>
-                  <td style="padding:10px 12px;font-size:12px;"><strong style="display:block;color:#0369a1;font-size:10px;text-transform:uppercase;letter-spacing:1px;">Fecha visita</strong>{$fechaHoy}</td>
-                  <td style="padding:10px 12px;font-size:12px;"><strong style="display:block;color:#0369a1;font-size:10px;text-transform:uppercase;letter-spacing:1px;">Total internos</strong>{$totalVisitas}</td>
-                  <td style="padding:10px 12px;font-size:12px;"><strong style="display:block;color:#0369a1;font-size:10px;text-transform:uppercase;letter-spacing:1px;">Folio</strong>{$folioDocumento}</td>
-                  <td style="padding:10px 12px;font-size:12px;"><strong style="display:block;color:#0369a1;font-size:10px;text-transform:uppercase;letter-spacing:1px;">Abogada</strong>{$abogadaFirma}</td>
+                  <td valign="middle"><img src="https://tacam.cl/wp-content/uploads/2023/11/logo-tacam-1-registrad-blancoo_.png" alt="TACAM" style="height:64px;width:auto;display:block;" /></td>
+                  <td valign="middle" align="right" style="font-size:13px;color:rgba(255,255,255,.85);">
+                    <strong style="display:block;color:#fff;font-size:14px;margin-bottom:2px;">estudiojuridico@tacam.cl</strong>
+                    {$metaDate}
+                  </td>
                 </tr>
               </table>
             </td>
           </tr>
           <tr>
-            <td style="padding:0 24px 22px;">
-              <p style="margin:0 0 10px;font-size:13px;color:#1f2937;line-height:1.45;">De mi consideración, se solicita autorización de ingreso para visita presencial a los internos detallados a continuación, respetando el orden y estructura de planilla enviada.</p>
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;border:1px solid #cbd5e1;">
+            <td style="padding:36px 56px 48px;">
+              <span style="display:inline-block;background:#fee2e2;color:#b91c1c;padding:4px 12px;border-radius:999px;font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;">Entrevista Abogada</span>
+              <h2 style="font-size:13px;letter-spacing:3px;text-transform:uppercase;color:#b91c1c;margin:0 0 8px;font-weight:700;">Solicitud de visita presencial</h2>
+              <p style="font-size:24px;font-weight:700;margin:0 0 22px;line-height:1.25;color:#0f172a;">Antofagasta</p>
+
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px;border:1px solid #7dd3fc;border-left:5px solid #075985;background:#e0f2fe;border-radius:10px;">
+                <tr>
+                  <td style="padding:14px 20px;">
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                      <tr>
+                        <td style="font-size:13px;min-width:140px;"><span style="display:block;font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:#075985;font-weight:700;margin-bottom:2px;">Ciudad</span><strong>Antofagasta</strong></td>
+                        <td style="font-size:13px;min-width:140px;"><span style="display:block;font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:#075985;font-weight:700;margin-bottom:2px;">Fecha de visita</span><strong>{$fechaHoy}</strong></td>
+                        <td style="font-size:13px;min-width:140px;"><span style="display:block;font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:#075985;font-weight:700;margin-bottom:2px;">Total internos</span><strong>{$totalVisitas}</strong></td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+
+              <p style="font-size:14px;line-height:1.65;color:#334155;margin:0 0 24px;"><b>De mi consideración:</b><br/>{$bodyParagraph}</p>
+
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:separate;border-spacing:0;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;margin-bottom:20px;font-size:13px;">
                 <thead>
                   <tr>
-                    <th style="padding:10px;border:1px solid #cbd5e1;background:#b32025;color:#ffffff;font-size:11px;letter-spacing:1px;text-transform:uppercase;">#</th>
-                    <th style="padding:10px;border:1px solid #cbd5e1;background:#b32025;color:#ffffff;font-size:11px;letter-spacing:1px;text-transform:uppercase;">Nombre interno/a</th>
-                    <th style="padding:10px;border:1px solid #cbd5e1;background:#b32025;color:#ffffff;font-size:11px;letter-spacing:1px;text-transform:uppercase;">RUT</th>
-                    <th style="padding:10px;border:1px solid #cbd5e1;background:#b32025;color:#ffffff;font-size:11px;letter-spacing:1px;text-transform:uppercase;">Hora</th>
-                    <th style="padding:10px;border:1px solid #cbd5e1;background:#b32025;color:#ffffff;font-size:11px;letter-spacing:1px;text-transform:uppercase;">Módulo</th>
-                    <th style="padding:10px;border:1px solid #cbd5e1;background:#b32025;color:#ffffff;font-size:11px;letter-spacing:1px;text-transform:uppercase;">Tiempo visita</th>
-                    <th style="padding:10px;border:1px solid #cbd5e1;background:#b32025;color:#ffffff;font-size:11px;letter-spacing:1px;text-transform:uppercase;">Firma gendarmería</th>
+                    <th style="background:#b91c1c;color:#fff;text-align:left;padding:12px 14px;font-size:11px;letter-spacing:2px;text-transform:uppercase;font-weight:600;">Nombre</th>
+                    <th style="background:#b91c1c;color:#fff;text-align:left;padding:12px 14px;font-size:11px;letter-spacing:2px;text-transform:uppercase;font-weight:600;">RUT</th>
                   </tr>
                 </thead>
                 <tbody>
                   {$rowsHtml}
                 </tbody>
               </table>
-            </td>
-          </tr>
-          <tr>
-            <td style="padding:0 24px 24px;">
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
-                <tr>
-                  <td style="padding-top:8px;border-top:1px solid #d1d5db;font-size:13px;color:#374151;line-height:1.5;">
-                    <strong style="color:#111827;">{$abogadaFirma}</strong><br/>
-                    Estudio Jurídico TACAM · Antofagasta<br/>
-                    <span style="color:#6b7280;">Correo: estudiojuridico@tacam.cl</span>
-                  </td>
-                </tr>
-              </table>
+
+              <p style="margin:0;font-size:12px;color:#64748b;">Folio: {$folioDocumento}</p>
             </td>
           </tr>
         </table>
@@ -133,7 +123,6 @@ function build_gendarmeria_roster_html(string $subject, array $templateData): st
 </html>
 HTML;
 }
-
 
 function build_email_html(string $toName, string $subject, string $textContent, string $templateType, array $templateData): string
 {
