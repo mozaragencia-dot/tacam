@@ -449,6 +449,40 @@ function normalizeLawyerKey(name) {
   return String(name || '').trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 }
 
+function sanitizeClients(clients) {
+  const list = Array.isArray(clients) ? clients : [];
+  const byKey = new Map();
+
+  list.forEach(client => {
+    if (!client || typeof client !== 'object') return;
+
+    const name = String(client.name || '').trim();
+    const email = String(client.email || '').trim().toLowerCase();
+    const isDemo = Boolean(client.__demo)
+      || /\bdemo\b/i.test(name)
+      || /\bdemo\b/i.test(email)
+      || /direcci[oó]n\s*demo/i.test(String(client.address || '').trim());
+    if (isDemo) return;
+
+    const rut = String(client.rut || '').replace(/[^\dkK]/g, '').toLowerCase();
+    const phone = String(client.phone || '').replace(/\D/g, '');
+    const key = rut || (name ? `${name.toLowerCase()}|${phone}` : '') || String(client.id || '').trim();
+    if (!key) return;
+
+    if (!byKey.has(key)) {
+      byKey.set(key, client);
+      return;
+    }
+
+    const existing = byKey.get(key);
+    const candidateScore = Number(Boolean(client.updatedAt)) + Number(Boolean(client.email)) + Number(Boolean(client.address));
+    const existingScore = Number(Boolean(existing.updatedAt)) + Number(Boolean(existing.email)) + Number(Boolean(existing.address));
+    if (candidateScore >= existingScore) byKey.set(key, { ...existing, ...client });
+  });
+
+  return [...byKey.values()];
+}
+
 function syncLawyersData() {
   const lawyers        = loadJson(STORAGE_KEYS.lawyers, []);
   const retainedLawyers = lawyers.filter(
@@ -506,10 +540,11 @@ function saveBookings(b)       {
   saveJson(STORAGE_KEYS.bookings, normalized);
 }
 
-function getClients()          { return loadJson(STORAGE_KEYS.clients, []); }
+function getClients()          { return sanitizeClients(loadJson(STORAGE_KEYS.clients, [])); }
 function saveClients(c)        {
   const now = new Date().toISOString();
-  const normalized = Array.isArray(c) ? c.map(item => {
+  const sanitized = sanitizeClients(c);
+  const normalized = Array.isArray(sanitized) ? sanitized.map(item => {
     const record = item && typeof item === 'object' ? { ...item } : item;
     if (record && typeof record === 'object') {
       if (!record.id) record.id = crypto.randomUUID();
@@ -576,6 +611,11 @@ function fileToDataUrl(file) {
 // app.js escucha 'tacam-server-hydrated' y llama renderAll().
 
 seedData();
+
+const cleanedClients = sanitizeClients(loadJson(STORAGE_KEYS.clients, []));
+if (cleanedClients.length !== loadJson(STORAGE_KEYS.clients, []).length) {
+  saveJsonLocal(STORAGE_KEYS.clients, cleanedClients);
+}
 
 // Escuchar la hidratación para limpiar demos y NO volver a sincronizar al servidor
 window.addEventListener('tacam-server-hydrated', function onHydrated(event) {

@@ -18,8 +18,8 @@
       <h2 class="brand-title"><span>Ingreso Administrador</span></h2>
       <p>Acceso restringido al sistema TACAM.</p>
       <form id="login-form" class="grid">
-        <label>Usuario <input name="username" required placeholder="admin" /></label>
-        <label>Contraseña <input name="password" type="password" required placeholder="admin" /></label>
+        <label>Usuario <input name="username" required autocomplete="username" placeholder="admin" /></label>
+        <label>Contraseña <input name="password" type="password" required autocomplete="current-password" placeholder="admin" /></label>
         <button type="submit">Ingresar</button>
       </form>
       <p id="login-error" class="login-error" hidden>Credenciales inválidas. Usa admin/admin.</p>
@@ -305,7 +305,7 @@
             </select>
           </label>
           <label>Módulo
-            <input id="prison-client-module" name="prisonModule" required placeholder="Se completa automáticamente si el contacto ya tiene módulo" />
+            <input id="prison-client-module" name="prisonModule" placeholder="Se completa automáticamente si el contacto ya tiene módulo" />
           </label>
           <label>Abogada
             <select name="assignedTo">
@@ -341,10 +341,10 @@
             <label><input type="checkbox" data-gendarmeria-recipient value="tije.cpfantofagasta@gendarmeria.cl" checked /> tije.cpfantofagasta@gendarmeria.cl (Cárcel Mujeres)</label>
             <label><input type="checkbox" data-gendarmeria-recipient value="claudia.lizama@gendarmeria.cl" checked /> claudia.lizama@gendarmeria.cl (Cárcel Mujeres)</label>
           </div>
+          <label class="full">Visitas seleccionables
+            <select id="gendarmeria-visit-select" multiple size="7"></select>
+          </label>
           <div class="gendarmeria-banner-actions">
-            <label class="full">Visitas seleccionables
-              <select id="gendarmeria-visit-select" multiple size="7"></select>
-            </label>
             <button id="send-gendarmeria-email" type="button">Enviar a Gendarmería</button>
           </div>
         </div>
@@ -406,7 +406,8 @@
           </fieldset>
           <button type="submit">Crear / Actualizar perfil</button>
         </form>
-        <div id="profile-list" class="profile-grid"></div>
+        <div id="profile-list"></div>
+        <button id="profile-show-more" type="button" class="switch-btn" hidden>Mostrar todos</button>
       </section>
 
       <section class="card module-panel" data-module-panel="reports">
@@ -424,19 +425,9 @@
             <div id="prison-lawyer-ranking" class="ranking-list-card"></div>
           </article>
           <article class="report-card">
-            <h3>Atenciones por abogada</h3>
-            <canvas id="lawyer-stats-chart" width="1200" height="420"></canvas>
-            <button type="button" class="print-chart-btn" data-print-chart="lawyer-stats-chart">Imprimir gráfico</button>
-          </article>
-          <article class="report-card">
             <h3>Visitas a la Cárcel por abogada</h3>
             <canvas id="prison-stats-chart" width="1200" height="420"></canvas>
             <button type="button" class="print-chart-btn" data-print-chart="prison-stats-chart">Imprimir gráfico</button>
-          </article>
-          <article class="report-card">
-            <h3>Ranking de abogadas</h3>
-            <canvas id="lawyer-ranking-chart" width="1200" height="420"></canvas>
-            <button type="button" class="print-chart-btn" data-print-chart="lawyer-ranking-chart">Imprimir gráfico</button>
           </article>
           <article class="report-card">
             <h3>Visitas por interna (abogada seleccionada)</h3>

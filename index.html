@@ -406,7 +406,8 @@
           </fieldset>
           <button type="submit">Crear / Actualizar perfil</button>
         </form>
-        <div id="profile-list" class="profile-grid"></div>
+        <div id="profile-list"></div>
+        <button id="profile-show-more" type="button" class="switch-btn" hidden>Mostrar todos</button>
       </section>
 
       <section class="card module-panel" data-module-panel="reports">
@@ -424,19 +425,9 @@
             <div id="prison-lawyer-ranking" class="ranking-list-card"></div>
           </article>
           <article class="report-card">
-            <h3>Atenciones por abogada</h3>
-            <canvas id="lawyer-stats-chart" width="1200" height="420"></canvas>
-            <button type="button" class="print-chart-btn" data-print-chart="lawyer-stats-chart">Imprimir gráfico</button>
-          </article>
-          <article class="report-card">
             <h3>Visitas a la Cárcel por abogada</h3>
             <canvas id="prison-stats-chart" width="1200" height="420"></canvas>
             <button type="button" class="print-chart-btn" data-print-chart="prison-stats-chart">Imprimir gráfico</button>
-          </article>
-          <article class="report-card">
-            <h3>Ranking de abogadas</h3>
-            <canvas id="lawyer-ranking-chart" width="1200" height="420"></canvas>
-            <button type="button" class="print-chart-btn" data-print-chart="lawyer-ranking-chart">Imprimir gráfico</button>
           </article>
           <article class="report-card">
             <h3>Visitas por interna (abogada seleccionada)</h3>

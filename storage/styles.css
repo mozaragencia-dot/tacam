@@ -292,8 +292,8 @@ th {
 .badge.cancelada { background: #E5E7EB; color: #374151; }
 
 /* ===== Cards / lists ===== */
-.lawyer-grid, .profile-grid { margin-top: 12px; display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
-.lawyer-card, .profile-card {
+.lawyer-grid { margin-top: 12px; display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
+.lawyer-card {
   border: 1px solid var(--line);
   border-radius: 12px;
   background: #FCFCFD;
@@ -307,7 +307,12 @@ th {
 .lawyer-card-content h3 { margin: 0; color: #1E293B; font-size: 16px; }
 .lawyer-info { display: grid; gap: 4px; background: #fff; padding: 8px; border: 1px solid #E2E8F0; border-radius: 8px; }
 .lawyer-info p { margin: 0; font-size: 12px; color: #4B5563; line-height: 1.35; }
-.lawyer-stats, .profile-perms { margin: 8px 0 0; padding-left: 18px; color: #4B5563; font-size: 13px; display: grid; gap: 2px; }
+.lawyer-stats { margin: 8px 0 0; padding-left: 18px; color: #4B5563; font-size: 13px; display: grid; gap: 2px; }
+
+#profile-list { margin-top: 12px; }
+.profile-simple-list { margin: 0; padding-left: 18px; display: grid; gap: 8px; color: #374151; font-size: 14px; }
+.profile-simple-list li { line-height: 1.35; }
+#profile-show-more { margin-top: 8px; }
 
 .permissions-box {
   border: 1px solid #E2E8F0;

@@ -43,9 +43,7 @@ const lawyerCalendar = document.getElementById('lawyer-calendar');
 const lawyerCalendarLegend = document.getElementById('lawyer-calendar-legend');
 const sharedOnlyInput = document.getElementById('shared-only');
 const prisonLawyerRankingCard = document.getElementById('prison-lawyer-ranking');
-const lawyerStatsChart = document.getElementById('lawyer-stats-chart');
 const prisonStatsChart = document.getElementById('prison-stats-chart');
-const lawyerRankingChart = document.getElementById('lawyer-ranking-chart');
 const prisonPersonChart = document.getElementById('prison-person-chart');
 const reportLawyerFilter = document.getElementById('report-lawyer-filter');
 const downloadGeneralReportBtn = document.getElementById('download-general-report');
@@ -57,6 +55,7 @@ const restoreBackupInput = document.getElementById('restore-backup-input');
 const printChartButtons = document.querySelectorAll('[data-print-chart]');
 const profileForm = document.getElementById('profile-form');
 const profileList = document.getElementById('profile-list');
+const profileShowMoreBtn = document.getElementById('profile-show-more');
 const clientSelect = document.getElementById('client-id-selected');
 const hiredLawyerInput = bookingForm.elements.hiredLawyer;
 const bookingImputadoStatusInput = bookingForm.elements.bookingImputadoStatus;
@@ -115,6 +114,7 @@ const savePopupOkBtn = document.getElementById('save-popup-ok');
 const syncIndicator = document.getElementById('sync-indicator');
 const clientsShowMoreBtn = document.getElementById('clients-show-more');
 const CLIENTS_PAGE_SIZE = 10;
+const PROFILE_PREVIEW_SIZE = 5;
 const APP_CONFIG = {
   twilioEndpoint: 'twilio-whatsapp.php',
   internalToken: String(
@@ -127,6 +127,7 @@ const APP_CONFIG = {
 };
 let toastTimer = null;
 let clientsVisibleLimit = CLIENTS_PAGE_SIZE;
+let profilesExpanded = false;
 
 function switchModule(moduleName) {
   moduleTabs.forEach(tab => {
@@ -2119,12 +2120,6 @@ function restoreBackupPayload(payload) {
 function renderReports() {
   renderPrisonLawyerRankingCard();
 
-  const lawyerStats = getLawyerAttentionStats();
-  const lawyerLabels = lawyerStats.map(item => item.lawyer);
-  const lawyerValues = lawyerStats.map(item => item.atendida);
-  const lawyerColors = lawyerStats.map(item => getAttentionPerformanceColor(item.atendida));
-  drawBarChart(lawyerStatsChart, lawyerLabels, lawyerValues, lawyerColors, 'Atenciones (estado atendida) por abogada');
-
   const prisonStats = getPrisonVisitStats().sort((a, b) => b.total - a.total);
   drawHorizontalBarChart(
     prisonStatsChart,
@@ -2132,15 +2127,6 @@ function renderReports() {
     prisonStats.map(item => item.total),
     prisonStats.map(item => getVisitRangeColor(item.total)),
     'Visitas a la cárcel por abogada'
-  );
-
-  const ranking = getLawyerRankingStats();
-  drawHorizontalBarChart(
-    lawyerRankingChart,
-    ranking.map(item => item.lawyer),
-    ranking.map(item => item.attended),
-    ranking.map(item => getVisitRangeColor(item.attended)),
-    'Ranking por atenciones (abogadas)'
   );
 
   const selectedLawyer = String(reportLawyerFilter.value || '').trim();
@@ -2771,34 +2757,33 @@ function renderProfiles() {
     const empty = document.createElement('p');
     empty.textContent = 'No hay perfiles creados.';
     profileList.appendChild(empty);
+    if (profileShowMoreBtn) profileShowMoreBtn.hidden = true;
     return;
   }
 
-  profiles.forEach(profile => {
-    const card = document.createElement('article');
-    card.className = 'profile-card';
+  const list = document.createElement('ul');
+  list.className = 'profile-simple-list';
 
-    const content = document.createElement('div');
-    const title = document.createElement('h4');
-    title.textContent = `${profile.name} (${profile.role})`;
-    content.appendChild(title);
-
-    const user = document.createElement('small');
-    user.textContent = `Usuario: ${profile.username}`;
-    content.appendChild(user);
-
-    const perms = document.createElement('ul');
-    perms.className = 'profile-perms';
-    (profile.permissions || []).forEach(permission => {
-      const item = document.createElement('li');
-      item.textContent = permission;
-      perms.appendChild(item);
-    });
-
-    content.appendChild(perms);
-    card.appendChild(content);
-    profileList.appendChild(card);
+  const visibleProfiles = profilesExpanded ? profiles : profiles.slice(0, PROFILE_PREVIEW_SIZE);
+  visibleProfiles.forEach(profile => {
+    const item = document.createElement('li');
+    const permissions = (profile.permissions || []).join(', ') || 'Sin permisos definidos';
+    item.textContent = `${profile.name || 'Sin nombre'} · ${profile.role || 'Sin rol'} · ${profile.username || '-'} · Permisos: ${permissions}`;
+    list.appendChild(item);
   });
+
+  profileList.appendChild(list);
+
+  if (profileShowMoreBtn) {
+    if (profiles.length <= PROFILE_PREVIEW_SIZE) {
+      profileShowMoreBtn.hidden = true;
+    } else {
+      profileShowMoreBtn.hidden = false;
+      profileShowMoreBtn.textContent = profilesExpanded
+        ? 'Mostrar solo últimos 5'
+        : `Mostrar todos (${profiles.length})`;
+    }
+  }
 }
 
 function renderAll() {
@@ -3673,6 +3658,13 @@ if (APP_CONFIG.internalToken) {
   console.warn('APP_INTERNAL_TOKEN no configurado para endpoint interno de WhatsApp.');
 }
 if (deleteClientBtn) deleteClientBtn.disabled = true;
+if (profileShowMoreBtn) {
+  profileShowMoreBtn.addEventListener('click', () => {
+    profilesExpanded = !profilesExpanded;
+    renderProfiles();
+  });
+}
+
 if (clientsShowMoreBtn) {
   clientsShowMoreBtn.addEventListener('click', () => {
     clientsVisibleLimit += CLIENTS_PAGE_SIZE;

@@ -43,9 +43,7 @@ const lawyerCalendar = document.getElementById('lawyer-calendar');
 const lawyerCalendarLegend = document.getElementById('lawyer-calendar-legend');
 const sharedOnlyInput = document.getElementById('shared-only');
 const prisonLawyerRankingCard = document.getElementById('prison-lawyer-ranking');
-const lawyerStatsChart = document.getElementById('lawyer-stats-chart');
 const prisonStatsChart = document.getElementById('prison-stats-chart');
-const lawyerRankingChart = document.getElementById('lawyer-ranking-chart');
 const prisonPersonChart = document.getElementById('prison-person-chart');
 const reportLawyerFilter = document.getElementById('report-lawyer-filter');
 const downloadGeneralReportBtn = document.getElementById('download-general-report');
@@ -57,6 +55,7 @@ const restoreBackupInput = document.getElementById('restore-backup-input');
 const printChartButtons = document.querySelectorAll('[data-print-chart]');
 const profileForm = document.getElementById('profile-form');
 const profileList = document.getElementById('profile-list');
+const profileShowMoreBtn = document.getElementById('profile-show-more');
 const clientSelect = document.getElementById('client-id-selected');
 const hiredLawyerInput = bookingForm.elements.hiredLawyer;
 const bookingImputadoStatusInput = bookingForm.elements.bookingImputadoStatus;
@@ -115,6 +114,7 @@ const savePopupOkBtn = document.getElementById('save-popup-ok');
 const syncIndicator = document.getElementById('sync-indicator');
 const clientsShowMoreBtn = document.getElementById('clients-show-more');
 const CLIENTS_PAGE_SIZE = 10;
+const PROFILE_PREVIEW_SIZE = 5;
 const APP_CONFIG = {
   twilioEndpoint: 'twilio-whatsapp.php',
   internalToken: String(
@@ -127,6 +127,7 @@ const APP_CONFIG = {
 };
 let toastTimer = null;
 let clientsVisibleLimit = CLIENTS_PAGE_SIZE;
+let profilesExpanded = false;
 
 function switchModule(moduleName) {
   moduleTabs.forEach(tab => {
@@ -552,7 +553,7 @@ function applyRoleAccess() {
   const session = getSession();
   const role = String(session.role || 'Admin');
   const sessionLawyer = getCurrentSessionLawyerName();
-  const allowedForLawyer = new Set(['create', 'clients', 'prison-visits', 'imputados', 'lawyers']);
+  const allowedForLawyer = new Set(['create', 'agenda', 'bookings', 'prison-visits', 'imputados', 'clients', 'lawyers']);
 
   moduleTabs.forEach(tab => {
     if (role !== 'Abogada') {
@@ -561,30 +562,20 @@ function applyRoleAccess() {
     }
     tab.hidden = !allowedForLawyer.has(tab.dataset.moduleTab || '');
   });
-
   if (role === 'Abogada' && !allowedForLawyer.has(document.querySelector('.module-tab.active')?.dataset.moduleTab || '')) {
-    switchModule('create');
+    switchModule('agenda');
   }
 
   if (prisonLawyerFilter) prisonLawyerFilter.disabled = role === 'Abogada';
   if (lawyerCalendarFilter) lawyerCalendarFilter.disabled = role === 'Abogada';
   if (sharedOnlyInput) sharedOnlyInput.disabled = role === 'Abogada';
-
   if (role === 'Abogada' && sessionLawyer) {
-    if (assignedToSelect) {
-      assignedToSelect.value = sessionLawyer;
-      assignedToSelect.disabled = true;
-    }
-    if (prisonAssignedToSelect) {
-      prisonAssignedToSelect.value = sessionLawyer;
-      prisonAssignedToSelect.disabled = true;
-    }
+    if (assignedToSelect) { assignedToSelect.value = sessionLawyer; assignedToSelect.disabled = false; }
+    if (prisonAssignedToSelect) { prisonAssignedToSelect.value = sessionLawyer; prisonAssignedToSelect.disabled = false; }
     if (lawyerFilter) lawyerFilter.value = sessionLawyer;
     if (prisonLawyerFilter) prisonLawyerFilter.value = sessionLawyer;
+    if (lawyerCalendarFilter) lawyerCalendarFilter.value = sessionLawyer;
     if (reportLawyerFilter) reportLawyerFilter.value = sessionLawyer;
-  } else {
-    if (assignedToSelect) assignedToSelect.disabled = !hiredLawyerInput.checked;
-    if (prisonAssignedToSelect) prisonAssignedToSelect.disabled = false;
   }
 }
 
@@ -593,12 +584,10 @@ function getVisibleClientsForSession() {
   const sessionLawyer = getCurrentSessionLawyerName();
   const clients = getClients();
   if (role !== 'Abogada' || !sessionLawyer) return clients;
-
   const clientIds = new Set(getBookings()
     .filter(booking => (booking.assignedTo || '').trim() === sessionLawyer)
     .map(booking => booking.clientId)
     .filter(Boolean));
-
   return clients.filter(client =>
     clientIds.has(client.id) ||
     String(client.assignedTo || '').trim() === sessionLawyer ||
@@ -1222,7 +1211,7 @@ function isValidRut(value) {
 }
 
 function isValidPhone(value) {
-  return /^\+569\d{8}$/.test(String(value || ''));
+  return /^\+56(?:9\d{8}|\d{8,9})$/.test(String(value || ''));
 }
 
 function updateChileClock() {
@@ -1290,7 +1279,7 @@ function renderClientOptions() {
     });
 
   renderClientSearchResults(clients, query);
-  const selectedClient = getClients().find(client => client.id === clientSelect.value);
+  const selectedClient = getVisibleClientsForSession().find(client => client.id === clientSelect.value);
   clientSelectedLabel.textContent = selectedClient
     ? `Contacto seleccionado: ${selectedClient.name} · ${selectedClient.rut}`
     : 'Contacto seleccionado: ninguno';
@@ -1589,7 +1578,7 @@ function fillClientEditForm(clientId) {
   }, representative);
   updateEditRepresentativeVisibility();
 
-  const clientBookings = getBookings().filter(booking => booking.clientId === clientId);
+  const clientBookings = getVisibleBookingsForSession(getBookings()).filter(booking => booking.clientId === clientId);
   const hiredBooking = clientBookings.find(booking => booking.hiredLawyer);
   clientEditHiredLaterInput.checked = Boolean(hiredBooking);
   clientEditAssignedToSelect.value = hiredBooking?.assignedTo || UNASSIGNED_LAWYER_LABEL;
@@ -1600,7 +1589,7 @@ function fillClientEditForm(clientId) {
 function getLawyerStats(lawyerName) {
   const stats = { total: 0, nueva: 0, confirmada: 0, atendida: 0, cancelada: 0 };
 
-  getBookings().forEach(booking => {
+  getVisibleBookingsForSession(getBookings()).forEach(booking => {
     if ((booking.assignedTo || '').trim() !== lawyerName) return;
     stats.total += 1;
     if (Object.hasOwn(stats, booking.status)) {
@@ -1625,7 +1614,7 @@ function getLawyerColor(name) {
 }
 
 function getCalendarBookings(selectedLawyer, selectedMonth, onlyShared = false, predicate = null) {
-  const allBookings = getBookings().filter(booking => booking.hiredLawyer && booking.status !== 'cancelada' && booking.date);
+  const allBookings = getVisibleBookingsForSession(getBookings()).filter(booking => booking.hiredLawyer && booking.status !== 'cancelada' && booking.date);
   const filteredBookings = typeof predicate === 'function' ? allBookings.filter(predicate) : allBookings;
   const byMonth = filteredBookings.filter(booking => !selectedMonth || booking.date.slice(0, 7) === selectedMonth);
   const byLawyer = byMonth.filter(booking => !selectedLawyer || booking.assignedTo === selectedLawyer);
@@ -1751,7 +1740,9 @@ function renderCalendar(container, bookings, selectedMonth) {
 }
 
 function renderAgendaCalendar() {
-  const selectedLawyer = lawyerFilter.value.trim();
+  const role = getCurrentSessionRole();
+  const sessionLawyer = getCurrentSessionLawyerName();
+  const selectedLawyer = role === 'Abogada' && sessionLawyer ? sessionLawyer : lawyerFilter.value.trim();
   const selectedMonth = agendaMonthInput.value;
   const bookings = getCalendarBookings(selectedLawyer, selectedMonth, false, booking => !isPrisonVisit(booking));
   const names = [...new Set(bookings.map(booking => booking.assignedTo).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es'));
@@ -1796,7 +1787,7 @@ function getLawyerAttentionStats() {
 
 function getPrisonVisitStats() {
   const map = new Map();
-  getBookings()
+  getVisibleBookingsForSession(getBookings())
     .filter(booking => isPrisonVisit(booking) && booking.prisonAttendance === 'asistio')
     .forEach(booking => {
       const lawyer = (booking.assignedTo || 'Sin abogada').trim() || 'Sin abogada';
@@ -1881,7 +1872,7 @@ function getLawyerRankingStats() {
 
 function getPrisonPersonStats(selectedLawyer = '') {
   const map = new Map();
-  getBookings()
+  getVisibleBookingsForSession(getBookings())
     .filter(booking => isPrisonVisit(booking) && booking.prisonAttendance === 'asistio')
     .filter(booking => !selectedLawyer || (booking.assignedTo || '').trim() === selectedLawyer)
     .forEach(booking => {
@@ -2129,12 +2120,6 @@ function restoreBackupPayload(payload) {
 function renderReports() {
   renderPrisonLawyerRankingCard();
 
-  const lawyerStats = getLawyerAttentionStats();
-  const lawyerLabels = lawyerStats.map(item => item.lawyer);
-  const lawyerValues = lawyerStats.map(item => item.atendida);
-  const lawyerColors = lawyerStats.map(item => getAttentionPerformanceColor(item.atendida));
-  drawBarChart(lawyerStatsChart, lawyerLabels, lawyerValues, lawyerColors, 'Atenciones (estado atendida) por abogada');
-
   const prisonStats = getPrisonVisitStats().sort((a, b) => b.total - a.total);
   drawHorizontalBarChart(
     prisonStatsChart,
@@ -2142,15 +2127,6 @@ function renderReports() {
     prisonStats.map(item => item.total),
     prisonStats.map(item => getVisitRangeColor(item.total)),
     'Visitas a la cárcel por abogada'
-  );
-
-  const ranking = getLawyerRankingStats();
-  drawHorizontalBarChart(
-    lawyerRankingChart,
-    ranking.map(item => item.lawyer),
-    ranking.map(item => item.attended),
-    ranking.map(item => getVisitRangeColor(item.attended)),
-    'Ranking por atenciones (abogadas)'
   );
 
   const selectedLawyer = String(reportLawyerFilter.value || '').trim();
@@ -2343,7 +2319,6 @@ function renderAgenda() {
   const bookings = getVisibleBookingsForSession(getBookings()).filter(booking =>
     booking.hiredLawyer && booking.status !== 'cancelada' && !isPrisonVisit(booking) && (!selectedLawyer || booking.assignedTo === selectedLawyer)
   );
-  if (role === 'Abogada' && sessionLawyer && lawyerFilter) lawyerFilter.value = sessionLawyer;
 
   agendaBody.replaceChildren();
 
@@ -2431,8 +2406,10 @@ function buildPrisonCheckInMessage(booking) {
 
 function getFilteredPrisonVisitsForReport() {
   const selectedMonth = prisonMonthInput.value;
-  const selectedLawyer = String(prisonLawyerFilter.value || '').trim();
-  return getBookings()
+  const role = getCurrentSessionRole();
+  const sessionLawyer = getCurrentSessionLawyerName();
+  const selectedLawyer = role === 'Abogada' && sessionLawyer ? sessionLawyer : String(prisonLawyerFilter.value || '').trim();
+  return getVisibleBookingsForSession(getBookings())
     .filter(booking => booking.hiredLawyer && booking.status !== 'cancelada' && isPrisonVisit(booking))
     .filter(booking => !selectedLawyer || booking.assignedTo === selectedLawyer)
     .filter(booking => !selectedMonth || booking.date.slice(0, 7) === selectedMonth)
@@ -2537,7 +2514,7 @@ function renderGendarmeriaVisitOptions() {
   if (!gendarmeriaVisitSelect) return;
   const role = getCurrentSessionRole();
   const sessionLawyer = getCurrentSessionLawyerName();
-  const filterValue = role === 'Abogada' && sessionLawyer ? sessionLawyer : String(prisonLawyerFilter.value || '').trim();
+  const filterValue = role === 'Abogada' && sessionLawyer ? sessionLawyer : String(prisonLawyerFilter?.value || '').trim();
   const visits = getTomorrowPrisonVisitsForGendarmeria(filterValue);
 
   const previousValues = new Set(Array.from(gendarmeriaVisitSelect.selectedOptions || []).map(option => option.value));
@@ -2780,34 +2757,33 @@ function renderProfiles() {
     const empty = document.createElement('p');
     empty.textContent = 'No hay perfiles creados.';
     profileList.appendChild(empty);
+    if (profileShowMoreBtn) profileShowMoreBtn.hidden = true;
     return;
   }
 
-  profiles.forEach(profile => {
-    const card = document.createElement('article');
-    card.className = 'profile-card';
+  const list = document.createElement('ul');
+  list.className = 'profile-simple-list';
 
-    const content = document.createElement('div');
-    const title = document.createElement('h4');
-    title.textContent = `${profile.name} (${profile.role})`;
-    content.appendChild(title);
-
-    const user = document.createElement('small');
-    user.textContent = `Usuario: ${profile.username}`;
-    content.appendChild(user);
-
-    const perms = document.createElement('ul');
-    perms.className = 'profile-perms';
-    (profile.permissions || []).forEach(permission => {
-      const item = document.createElement('li');
-      item.textContent = permission;
-      perms.appendChild(item);
-    });
-
-    content.appendChild(perms);
-    card.appendChild(content);
-    profileList.appendChild(card);
+  const visibleProfiles = profilesExpanded ? profiles : profiles.slice(0, PROFILE_PREVIEW_SIZE);
+  visibleProfiles.forEach(profile => {
+    const item = document.createElement('li');
+    const permissions = (profile.permissions || []).join(', ') || 'Sin permisos definidos';
+    item.textContent = `${profile.name || 'Sin nombre'} · ${profile.role || 'Sin rol'} · ${profile.username || '-'} · Permisos: ${permissions}`;
+    list.appendChild(item);
   });
+
+  profileList.appendChild(list);
+
+  if (profileShowMoreBtn) {
+    if (profiles.length <= PROFILE_PREVIEW_SIZE) {
+      profileShowMoreBtn.hidden = true;
+    } else {
+      profileShowMoreBtn.hidden = false;
+      profileShowMoreBtn.textContent = profilesExpanded
+        ? 'Mostrar solo últimos 5'
+        : `Mostrar todos (${profiles.length})`;
+    }
+  }
 }
 
 function renderAll() {
@@ -2874,7 +2850,6 @@ clientForm.addEventListener('submit', event => {
   clientForm.elements.email.setCustomValidity('');
 
   if (imputadoModuleInput) imputadoModuleInput.setCustomValidity('');
-
   representativeNameInput.setCustomValidity('');
   representativeLastNameInput.setCustomValidity('');
 
@@ -2890,9 +2865,9 @@ clientForm.addEventListener('submit', event => {
     existing.email = email;
     existing.address = address;
     existing.inPrison = inPrison;
-    existing.prisonModule = inPrison ? imputadoModule : '';
+    existing.prisonModule = inPrison ? imputadoModule : (existing.prisonModule || '');
     existing.imputadoStatus = imputadoStatus;
-    existing.imputadoModule = inPrison ? imputadoModule : '';
+    existing.imputadoModule = inPrison ? imputadoModule : (existing.imputadoModule || '');
     existing.representative = imputadoStatus === 'imputado' ? representative : null;
     existing.updatedAt = new Date().toISOString();
   } else {
@@ -2908,7 +2883,10 @@ clientForm.addEventListener('submit', event => {
       imputadoStatus,
       imputadoModule: inPrison ? imputadoModule : '',
       representative: imputadoStatus === 'imputado' ? representative : null,
-      createdAt: new Date().toISOString()
+      assignedTo: role === 'Abogada' ? sessionLawyer : '',
+      createdByLawyer: role === 'Abogada' ? sessionLawyer : '',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
     });
   }
 
@@ -2968,8 +2946,9 @@ clientEditForm.addEventListener('submit', event => {
   client.address = address;
   client.imputadoStatus = imputadoStatus;
   client.inPrison = inPrison;
-  client.prisonModule = inPrison ? (client.imputadoModule || client.prisonModule || '') : '';
-  client.imputadoModule = inPrison ? (client.imputadoModule || client.prisonModule || '') : '';
+  const editModule = String(data.get('imputadoModule') || '').trim();
+  client.prisonModule = inPrison ? editModule : (client.prisonModule || '');
+  client.imputadoModule = inPrison ? editModule : (client.imputadoModule || '');
   client.representative = representativeData;
   client.updatedAt = new Date().toISOString();
   saveClients(clients);
@@ -3051,6 +3030,7 @@ bookingForm.addEventListener('submit', async event => {
     prisonAttendance: '',
     status: 'nueva',
     createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
     reminder24hSentAt: '',
     reminder1hSentAt: '',
     checkedInAt: ''
@@ -3090,7 +3070,7 @@ prisonBookingForm.addEventListener('submit', async event => {
   const prisonModule = String(data.get('prisonModule') || '').trim() || getClientModuleValue(client);
   if (prisonClientModuleInput) prisonClientModuleInput.setCustomValidity('');
 
-  if (String(client.prisonModule || '').trim() !== prisonModule || String(client.imputadoModule || '').trim() !== prisonModule) {
+  if (prisonModule && (String(client.prisonModule || '').trim() !== prisonModule || String(client.imputadoModule || '').trim() !== prisonModule)) {
     client.prisonModule = prisonModule;
     client.imputadoModule = prisonModule;
     client.updatedAt = new Date().toISOString();
@@ -3119,6 +3099,7 @@ prisonBookingForm.addEventListener('submit', async event => {
     prisonAttendance: '',
     status: 'confirmada',
     createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
     reminder24hSentAt: '',
     reminder1hSentAt: '',
     checkedInAt: ''
@@ -3167,18 +3148,16 @@ bookingRepresentativePhoneInput.addEventListener('input', () => {
   bookingRepresentativePhoneInput.value = formatPhone(bookingRepresentativePhoneInput.value);
 });
 
-if (clientSearchInput) clientSearchInput.addEventListener('input', renderClientOptions);
+clientSearchInput.addEventListener('input', renderClientOptions);
 if (prisonClientSearchInput) prisonClientSearchInput.addEventListener('input', queuePrisonClientSearch);
-if (prisonClientSelect) {
-  prisonClientSelect.addEventListener('change', () => {
-    const client = getVisibleClientsForSession().find(item => item.id === prisonClientSelect.value);
-    setPrisonClientSelection(client || null, { updateSearch: false });
-  });
-}
-if (clientEditSelect) clientEditSelect.addEventListener('change', () => fillClientEditForm(clientEditSelect.value));
+prisonClientSelect.addEventListener('change', () => {
+  const client = getClients().find(item => item.id === prisonClientSelect.value);
+  setPrisonClientSelection(client || null, { updateSearch: false });
+});
+clientEditSelect.addEventListener('change', () => fillClientEditForm(clientEditSelect.value));
 if (deleteClientBtn) {
   deleteClientBtn.addEventListener('click', () => {
-    const clientId = String(clientEditSelect?.value || '').trim();
+    const clientId = String(clientEditSelect.value || '').trim();
     if (!clientId) {
       showToast('Selecciona un contacto para borrar.');
       return;
@@ -3195,8 +3174,8 @@ if (deleteClientBtn) {
     saveClients(clients.filter(item => item.id !== clientId));
     saveBookings(getBookings().filter(booking => booking.clientId !== clientId));
     clientEditForm.reset();
-    if (clientEditSelect) clientEditSelect.value = '';
-    deleteClientBtn.disabled = true;
+    clientEditSelect.value = '';
+    if (deleteClientBtn) deleteClientBtn.disabled = true;
     renderAll();
     playSaveChime();
     showToast('Contacto borrado correctamente.');
@@ -3228,27 +3207,19 @@ hiredLawyerInput.addEventListener('change', () => {
   if (!hiredLawyerInput.checked) assignedToSelect.value = '';
 });
 
-if (lawyerFilter) {
-  lawyerFilter.addEventListener('change', () => {
-    renderAgenda();
-    renderAgendaCalendar();
-  });
-}
+if (lawyerFilter) lawyerFilter.addEventListener('change', () => {
+  renderAgenda();
+  renderAgendaCalendar();
+});
 if (agendaMonthInput) agendaMonthInput.addEventListener('change', renderAgendaCalendar);
-if (prisonMonthInput) {
-  prisonMonthInput.addEventListener('change', () => {
-    renderPrisonCalendar();
-    renderPrisonVisitsList();
-    renderGendarmeriaVisitOptions();
-  });
-}
-if (prisonLawyerFilter) {
-  prisonLawyerFilter.addEventListener('change', () => {
-    renderPrisonCalendar();
-    renderPrisonVisitsList();
-    renderGendarmeriaVisitOptions();
-  });
-}
+if (prisonMonthInput) prisonMonthInput.addEventListener('change', () => {
+  renderPrisonCalendar();
+  renderPrisonVisitsList();
+});
+if (prisonLawyerFilter) prisonLawyerFilter.addEventListener('change', () => {
+  renderPrisonCalendar();
+  renderPrisonVisitsList();
+});
 document.addEventListener('click', event => {
   const target = event.target;
   if (!(target instanceof Node)) return;
@@ -3257,46 +3228,45 @@ document.addEventListener('click', event => {
   }
 });
 
-if (sendGendarmeriaEmailBtn) {
-  sendGendarmeriaEmailBtn.addEventListener('click', async () => {
-    const bookingIds = Array.from(gendarmeriaVisitSelect?.selectedOptions || []).map(option => option.value).filter(Boolean);
-    if (!bookingIds.length) {
-      showToast('Selecciona una o más visitas para enviar a Gendarmería.');
-      gendarmeriaVisitSelect?.focus();
-      return;
-    }
+if (sendGendarmeriaEmailBtn) sendGendarmeriaEmailBtn.addEventListener('click', async () => {
+  const bookingIds = Array.from(gendarmeriaVisitSelect?.selectedOptions || []).map(option => option.value).filter(Boolean);
+  if (!bookingIds.length) {
+    showToast('Selecciona una o más visitas para enviar a Gendarmería.');
+    gendarmeriaVisitSelect?.focus();
+    return;
+  }
 
-    const visits = getVisibleBookingsForSession(getBookings()).filter(item => bookingIds.includes(item.id) && isPrisonVisit(item));
-    if (!visits.length) {
-      showToast('Las visitas seleccionadas ya no existen.');
-      renderGendarmeriaVisitOptions();
-      return;
-    }
+  const visits = getVisibleBookingsForSession(getBookings()).filter(item => bookingIds.includes(item.id) && isPrisonVisit(item));
+  if (!visits.length) {
+    showToast('Las visitas seleccionadas ya no existen.');
+    renderGendarmeriaVisitOptions();
+    return;
+  }
 
-    if (!window.confirm(`¿Confirmar envío manual a Gendarmería para ${visits.length} visita(s) de mañana?`)) return;
+  if (!window.confirm(`¿Confirmar envío manual a Gendarmería para ${visits.length} visita(s) de mañana?`)) return;
 
-    const subject = `TACAM: Nómina visita a la cárcel ${visits[0]?.date || ''}`.trim();
-    try {
-      const sent = await sendGendarmeriaRoster(visits, subject);
-      if (!sent) throw new Error('No se pudo enviar');
-      const sentAt = new Date().toISOString();
-      const bookings = getBookings();
-      bookings.forEach(current => {
-        if (bookingIds.includes(current.id)) current.gendarmeriaNotifiedAt = sentAt;
-      });
-      saveBookings(bookings);
-      renderAll();
-      showToast('Nómina enviada a Gendarmería.');
-    } catch (error) {
-      console.error('No se pudo enviar a Gendarmería', error);
-      showToast('Error al enviar a Gendarmería.');
-    }
-  });
-}
-lawyerCalendarFilter.addEventListener('change', renderLawyerCalendar);
-lawyerCalendarMonth.addEventListener('change', renderLawyerCalendar);
-sharedOnlyInput.addEventListener('change', renderLawyerCalendar);
-reportLawyerFilter.addEventListener('change', renderReports);
+  const subject = `TACAM: Nómina visita a la cárcel ${visits[0]?.date || ''}`.trim();
+  try {
+    const sent = await sendGendarmeriaRoster(visits, subject);
+    if (!sent) throw new Error('No se pudo enviar');
+    const sentAt = new Date().toISOString();
+    const bookings = getBookings();
+    bookings.forEach(current => {
+      if (bookingIds.includes(current.id)) current.gendarmeriaNotifiedAt = sentAt;
+    });
+    saveBookings(bookings);
+    renderAll();
+    showToast('Nómina enviada a Gendarmería.');
+  } catch (error) {
+    console.error('No se pudo enviar a Gendarmería', error);
+    showToast('Error al enviar a Gendarmería.');
+  }
+});
+
+if (lawyerCalendarFilter) lawyerCalendarFilter.addEventListener('change', renderLawyerCalendar);
+if (lawyerCalendarMonth) lawyerCalendarMonth.addEventListener('change', renderLawyerCalendar);
+if (sharedOnlyInput) sharedOnlyInput.addEventListener('change', renderLawyerCalendar);
+if (reportLawyerFilter) reportLawyerFilter.addEventListener('change', renderReports);
 
 imputadosBody.addEventListener('click', event => {
   const target = event.target;
@@ -3688,6 +3658,13 @@ if (APP_CONFIG.internalToken) {
   console.warn('APP_INTERNAL_TOKEN no configurado para endpoint interno de WhatsApp.');
 }
 if (deleteClientBtn) deleteClientBtn.disabled = true;
+if (profileShowMoreBtn) {
+  profileShowMoreBtn.addEventListener('click', () => {
+    profilesExpanded = !profilesExpanded;
+    renderProfiles();
+  });
+}
+
 if (clientsShowMoreBtn) {
   clientsShowMoreBtn.addEventListener('click', () => {
     clientsVisibleLimit += CLIENTS_PAGE_SIZE;
