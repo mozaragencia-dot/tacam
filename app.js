@@ -30,7 +30,9 @@ const agendaLegend = document.getElementById('agenda-color-legend');
 const prisonMonthInput = document.getElementById('prison-month');
 const prisonLawyerFilter = document.getElementById('prison-lawyer-filter');
 const sendGendarmeriaEmailBtn = document.getElementById('send-gendarmeria-email');
+const sendGendarmeriaTestEmailBtn = document.getElementById('send-gendarmeria-test-email');
 const gendarmeriaVisitSelect = document.getElementById('gendarmeria-visit-select');
+const gendarmeriaSelectedTickets = document.getElementById('gendarmeria-selected-tickets');
 const previewGendarmeriaEmailBtn = document.getElementById('preview-gendarmeria-email');
 const gendarmeriaTestEmailInput = document.getElementById('gendarmeria-test-email');
 const prisonCalendar = document.getElementById('prison-calendar');
@@ -2648,7 +2650,7 @@ function openGendarmeriaPreview(visits, subject, recipients) {
 }
 
 async function sendGendarmeriaRoster(visits, subject, options = {}) {
-  const { silentMissingRecipients = false } = options;
+  const { silentMissingRecipients = false, overrideRecipients = null } = options;
   const { recipients, hasInvalidTestEmail } = getGendarmeriaRecipients();
   if (hasInvalidTestEmail) {
     if (!silentMissingRecipients) showToast('Correo de prueba inválido. Revisa el formato.');
@@ -2667,7 +2669,8 @@ async function sendGendarmeriaRoster(visits, subject, options = {}) {
       return String(lawyer?.email || '').trim();
     })
     .filter(Boolean))];
-  const allRecipients = [...new Set([...recipients, ...GENDARMERIA_CC_RECIPIENTS, ...lawyerEmails])];
+  const baseRecipients = Array.isArray(overrideRecipients) && overrideRecipients.length ? overrideRecipients : recipients;
+  const allRecipients = [...new Set([...baseRecipients, ...GENDARMERIA_CC_RECIPIENTS, ...lawyerEmails])];
   try {
     for (const toEmail of allRecipients) {
       const response = await fetch('brevo-email.php', {
@@ -2715,6 +2718,27 @@ function renderGendarmeriaVisitOptions() {
       option.selected = true;
     });
   }
+
+  renderGendarmeriaSelectedTickets();
+}
+
+function renderGendarmeriaSelectedTickets() {
+  if (!gendarmeriaSelectedTickets || !gendarmeriaVisitSelect) return;
+  gendarmeriaSelectedTickets.replaceChildren();
+  const selected = Array.from(gendarmeriaVisitSelect.selectedOptions || []);
+  if (!selected.length) {
+    const empty = document.createElement('span');
+    empty.className = 'muted';
+    empty.textContent = 'Sin presos seleccionados para envío.';
+    gendarmeriaSelectedTickets.appendChild(empty);
+    return;
+  }
+  selected.forEach(option => {
+    const ticket = document.createElement('span');
+    ticket.className = 'ticket-chip';
+    ticket.textContent = option.textContent || option.value;
+    gendarmeriaSelectedTickets.appendChild(ticket);
+  });
 }
 
 function renderPrisonCalendar() {
@@ -2845,7 +2869,7 @@ function renderPrisonVisitsList() {
     durationLabel.className = 'muted';
     durationLabel.style.marginTop = '6px';
     durationLabel.style.fontSize = '12px';
-    durationLabel.textContent = currentDuration > 0 ? `Actual: ${formatVisitDurationMinutes(currentDuration)}` : 'Sin duración registrada';
+    durationLabel.textContent = currentDuration > 0 ? `Tiempo actual: ${formatVisitDurationMinutes(currentDuration)}` : 'Sin tiempo registrado';
 
     durationCell.append(durationWrap, durationLabel);
     row.appendChild(durationCell);
@@ -2876,7 +2900,7 @@ function renderPrisonVisitsList() {
         booking.visitDurationMinutes = totalMinutes;
       });
 
-      showToast(totalMinutes > 0 ? `Duración guardada: ${formatVisitDurationMinutes(totalMinutes)}` : 'Duración de visita eliminada.');
+      showToast(totalMinutes > 0 ? `Tiempo de visita guardado: ${formatVisitDurationMinutes(totalMinutes)}` : 'Tiempo de visita eliminado.');
     };
   });
 
@@ -3462,6 +3486,8 @@ document.addEventListener('click', event => {
   }
 });
 
+if (gendarmeriaVisitSelect) gendarmeriaVisitSelect.addEventListener('change', renderGendarmeriaSelectedTickets);
+
 function getSelectedGendarmeriaVisits() {
   const bookingIds = Array.from(gendarmeriaVisitSelect?.selectedOptions || []).map(option => option.value).filter(Boolean);
   const visits = getVisibleBookingsForSession(getBookings()).filter(item => bookingIds.includes(item.id) && isPrisonVisit(item));
@@ -3475,9 +3501,49 @@ if (previewGendarmeriaEmailBtn) previewGendarmeriaEmailBtn.addEventListener('cli
     gendarmeriaVisitSelect?.focus();
     return;
   }
-  const recipients = getGendarmeriaRecipients();
+  const { recipients, hasInvalidTestEmail } = getGendarmeriaRecipients();
+  if (hasInvalidTestEmail) {
+    showToast('Correo de prueba inválido. Revisa el formato.');
+    gendarmeriaTestEmailInput?.focus();
+    return;
+  }
   const subject = `TACAM: Nómina visita a la cárcel ${visits[0]?.date || ''}`.trim();
   openGendarmeriaPreview(visits, subject, recipients);
+});
+
+if (sendGendarmeriaTestEmailBtn) sendGendarmeriaTestEmailBtn.addEventListener('click', async () => {
+  const { visits } = getSelectedGendarmeriaVisits();
+  if (!visits.length) {
+    showToast('Selecciona al menos un preso para enviar prueba.');
+    gendarmeriaVisitSelect?.focus();
+    return;
+  }
+
+  const { recipients, hasInvalidTestEmail } = getGendarmeriaRecipients();
+  if (hasInvalidTestEmail) {
+    showToast('Correo de prueba inválido. Revisa el formato.');
+    gendarmeriaTestEmailInput?.focus();
+    return;
+  }
+
+  const testEmail = String(gendarmeriaTestEmailInput?.value || '').trim().toLowerCase();
+  if (!testEmail) {
+    showToast('Ingresa un correo de prueba para enviar test.');
+    gendarmeriaTestEmailInput?.focus();
+    return;
+  }
+
+  const subject = `TACAM: PRUEBA nómina visita a la cárcel ${visits[0]?.date || ''}`.trim();
+  openGendarmeriaPreview(visits, subject, [testEmail]);
+
+  try {
+    const sent = await sendGendarmeriaRoster(visits, subject, { overrideRecipients: [testEmail] });
+    if (!sent) throw new Error('No se pudo enviar prueba');
+    showToast(`Correo de prueba enviado a ${testEmail}.`);
+  } catch (error) {
+    console.error('No se pudo enviar prueba de Gendarmería', error);
+    showToast('No se pudo enviar el correo de prueba.');
+  }
 });
 
 if (sendGendarmeriaEmailBtn) sendGendarmeriaEmailBtn.addEventListener('click', async () => {
@@ -3494,7 +3560,12 @@ if (sendGendarmeriaEmailBtn) sendGendarmeriaEmailBtn.addEventListener('click', a
     return;
   }
 
-  const recipients = getGendarmeriaRecipients();
+  const { recipients, hasInvalidTestEmail } = getGendarmeriaRecipients();
+  if (hasInvalidTestEmail) {
+    showToast('Correo de prueba inválido. Revisa el formato.');
+    gendarmeriaTestEmailInput?.focus();
+    return;
+  }
   const subject = `TACAM: Nómina visita a la cárcel ${visits[0]?.date || ''}`.trim();
   openGendarmeriaPreview(visits, subject, recipients);
 

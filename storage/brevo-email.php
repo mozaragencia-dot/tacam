@@ -23,8 +23,8 @@ function build_gendarmeria_roster_html(string $subject, array $templateData): st
     $safeSubject = escape_html($subject);
     $fechaHoy = escape_html(trim((string)($templateData['fechaHoy'] ?? date('Y-m-d'))) ?: date('Y-m-d'));
     $totalVisitas = (int)($templateData['totalVisitas'] ?? 0);
-    $abogadaNombreRaw = trim((string)($templateData['abogadaNombre'] ?? ''));
-    $abogadaRutRaw = trim((string)($templateData['abogadaRut'] ?? ''));
+    $abogadaNombreRaw = trim((string)($templateData['abogadaNombre'] ?? '')) ?: 'Valentina Reichert';
+    $abogadaRutRaw = trim((string)($templateData['abogadaRut'] ?? '')) ?: 'FULL';
     $abogadaNombre = escape_html($abogadaNombreRaw);
     $abogadaRut = escape_html($abogadaRutRaw);
 
@@ -63,16 +63,9 @@ function build_gendarmeria_roster_html(string $subject, array $templateData): st
             . '</tr>';
     }
 
-    $paragraph = 'Se solicita coordinar visita presencial con los internos que se indican a continuación, en el horario de entrevista señalado.';
-    if ($abogadaNombreRaw !== '') {
-        $paragraph = 'La abogada <b>' . $abogadaNombre . '</b>';
-        if ($abogadaRutRaw !== '') {
-            $paragraph .= ', cédula de identidad <b>N° ' . $abogadaRut . '</b>';
-        }
-        $paragraph .= ', por este acto viene a solicitar coordinar visita presencial con los internos que se indican a continuación, en el horario de entrevista señalado.';
-    }
+    $paragraph = 'La abogada <b>' . $abogadaNombre . '</b>, cédula de identidad <b>N° ' . $abogadaRut . '</b>, por este acto viene a solicitar coordinar visita presencial con los internos que se indican a continuación, en el horario de entrevista señalado.';
 
-    $signatureName = $abogadaNombreRaw !== '' ? $abogadaNombre : 'Abogada TACAM';
+    $signatureName = $abogadaNombre;
 
     return <<<HTML
 <!DOCTYPE html>

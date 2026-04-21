@@ -331,7 +331,7 @@
           <h3>Contactos visitados</h3>
           <div class="table-wrap">
             <table>
-              <thead><tr><th>Abogada</th><th>Persona</th><th>Fecha</th><th>Hora</th><th>Estado</th><th>Asistencia</th><th>Duración visita</th><th>Recordatorios</th></tr></thead>
+              <thead><tr><th>Abogada</th><th>Persona</th><th>Fecha</th><th>Hora</th><th>Estado</th><th>Asistencia</th><th>Tiempo de visita</th><th>Recordatorios</th></tr></thead>
               <tbody id="prison-visits-body"></tbody>
             </table>
           </div>
@@ -341,19 +341,21 @@
           <strong>Envío manual a Gendarmería</strong>
           <p class="muted">Se listan automáticamente las personas con visita para mañana. Puedes seleccionar una o varias para enviar manualmente.</p>
           <div class="gendarmeria-recipients">
-            <p class="muted">Selecciona correos institucionales para este envío:</p>
-            <label><input type="checkbox" data-gendarmeria-recipient value="Omar.sepulveda@gendarmeria.cl" checked /> Omar.sepulveda@gendarmeria.cl (Cárcel Hombre)</label>
-            <label><input type="checkbox" data-gendarmeria-recipient value="tije.cpfantofagasta@gendarmeria.cl" checked /> tije.cpfantofagasta@gendarmeria.cl (Cárcel Mujeres)</label>
-            <label><input type="checkbox" data-gendarmeria-recipient value="claudia.lizama@gendarmeria.cl" checked /> claudia.lizama@gendarmeria.cl (Cárcel Mujeres)</label>
+            <p class="muted">Correos Gendarmería (selección por ticket):</p>
+            <label class="ticket-row"><input type="checkbox" data-gendarmeria-recipient value="Omar.sepulveda@gendarmeria.cl" checked /> <span>Omar.sepulveda@gendarmeria.cl</span> <small>(Cárcel Hombre)</small></label>
+            <label class="ticket-row"><input type="checkbox" data-gendarmeria-recipient value="tije.cpfantofagasta@gendarmeria.cl" checked /> <span>tije.cpfantofagasta@gendarmeria.cl</span> <small>(Cárcel Mujeres)</small></label>
+            <label class="ticket-row"><input type="checkbox" data-gendarmeria-recipient value="claudia.lizama@gendarmeria.cl" checked /> <span>claudia.lizama@gendarmeria.cl</span> <small>(Cárcel Mujeres)</small></label>
             <label class="full">Correo de prueba (opcional)
               <input id="gendarmeria-test-email" type="email" placeholder="nombre@dominio.com" autocomplete="email" />
             </label>
           </div>
-          <label class="full">Visitas seleccionables
+          <label class="full">Presos disponibles para envío
             <select id="gendarmeria-visit-select" multiple size="7"></select>
           </label>
+          <div id="gendarmeria-selected-tickets" class="ticket-list" aria-live="polite"></div>
           <div class="gendarmeria-banner-actions">
             <button id="preview-gendarmeria-email" type="button" class="switch-btn">Previsualizar correo</button>
+            <button id="send-gendarmeria-test-email" type="button" class="switch-btn">Enviar prueba correo</button>
             <button id="send-gendarmeria-email" type="button">Enviar a Gendarmería</button>
           </div>
         </div>
