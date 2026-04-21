@@ -183,7 +183,12 @@
       <section class="card module-panel" data-module-panel="clients">
         <h2>Editar datos de contacto</h2>
         <form id="client-edit-form" class="grid">
-          <label class="full">Contacto
+          <label class="full">Buscar contacto
+            <input id="client-edit-search" autocomplete="off" placeholder="Buscar por nombre, RUT o teléfono..." />
+          </label>
+          <div id="client-edit-search-results" class="search-results full" aria-live="polite"></div>
+          <p id="client-edit-selected-label" class="muted full">Contacto seleccionado: ninguno</p>
+          <label class="full" hidden>Contacto
             <select id="client-edit-select" name="clientId" required>
               <option value="">Seleccione un contacto</option>
             </select>

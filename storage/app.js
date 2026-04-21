@@ -20,6 +20,9 @@ const selectedClientPhoneInput = document.getElementById('selected-client-phone'
 const selectedClientEmailInput = document.getElementById('selected-client-email');
 const selectedClientAddressInput = document.getElementById('selected-client-address');
 const clientEditForm = document.getElementById('client-edit-form');
+const clientEditSearchInput = document.getElementById('client-edit-search');
+const clientEditSearchResults = document.getElementById('client-edit-search-results');
+const clientEditSelectedLabel = document.getElementById('client-edit-selected-label');
 const clientEditSelect = document.getElementById('client-edit-select');
 const deleteClientBtn = document.getElementById('delete-client-btn');
 const bookingForm = document.getElementById('booking-form');
@@ -336,6 +339,81 @@ function queuePrisonClientSearch() {
   }, 180);
 }
 
+
+function setClientEditSelection(client, { updateSearch = true } = {}) {
+  if (!client) {
+    clientEditSelect.value = '';
+    if (clientEditSelectedLabel) clientEditSelectedLabel.textContent = 'Contacto seleccionado: ninguno';
+    if (updateSearch && clientEditSearchInput) clientEditSearchInput.value = '';
+    fillClientEditForm('');
+    return;
+  }
+
+  clientEditSelect.value = client.id;
+  if (clientEditSelectedLabel) {
+    clientEditSelectedLabel.textContent = `Contacto seleccionado: ${client.name || '-'} · ${client.rut || 'Sin RUT'}`;
+  }
+  if (updateSearch && clientEditSearchInput) {
+    clientEditSearchInput.value = `${client.name || ''} (${client.rut || 'Sin RUT'})`;
+  }
+  fillClientEditForm(client.id);
+}
+
+function renderClientEditSearchResults(clients, query) {
+  if (!clientEditSearchResults) return;
+  clientEditSearchResults.replaceChildren();
+  if (!query) return;
+
+  const limited = clients.slice(0, 8);
+  if (!limited.length) {
+    const empty = document.createElement('div');
+    empty.className = 'muted';
+    empty.textContent = 'No se encontraron contactos.';
+    clientEditSearchResults.appendChild(empty);
+    return;
+  }
+
+  limited.forEach(client => {
+    const item = document.createElement('button');
+    item.type = 'button';
+    item.className = 'search-result-item';
+    item.textContent = `${client.name || ''} · ${client.rut || 'Sin RUT'} · ${client.phone || 'Sin teléfono'}`;
+    item.addEventListener('click', () => {
+      setClientEditSelection(client);
+      clientEditSearchResults.replaceChildren();
+      showToast('Contacto cargado para editar.');
+    });
+    clientEditSearchResults.appendChild(item);
+  });
+}
+
+let clientEditSearchTimer = null;
+function queueClientEditSearch() {
+  if (clientEditSearchTimer) clearTimeout(clientEditSearchTimer);
+  clientEditSearchTimer = setTimeout(() => {
+    const query = String(clientEditSearchInput?.value || '').trim().toLowerCase();
+    if (!query) {
+      renderClientEditSearchResults([], '');
+      const selectedClient = getVisibleClientsForSession().find(client => client.id === clientEditSelect.value);
+      if (selectedClient) {
+        setClientEditSelection(selectedClient, { updateSearch: false });
+      } else {
+        setClientEditSelection(null, { updateSearch: false });
+      }
+      return;
+    }
+
+    const clients = getVisibleClientsForSession()
+      .filter(client => {
+        const haystack = `${client.name || ''} ${client.rut || ''} ${client.phone || ''}`.toLowerCase();
+        return haystack.includes(query);
+      })
+      .sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), 'es'));
+
+    renderClientEditSearchResults(clients, query);
+  }, 180);
+}
+
 function updateRepresentativeVisibility() {
   const isImputado = imputadoStatusInput.value === 'imputado';
   imputadoPrisonFields.forEach(field => {
@@ -481,7 +559,8 @@ function showLogin() {
 }
 
 const ALLOWED_CREDENTIALS = [
-  { username: 'admin', password: 'admin' }
+  { username: 'admin', password: 'admin' },
+  { username: 'asistente', password: 'tacam321' }
 ];
 
 const LAWYER_COLORS = ['#8f203a', '#2166a5', '#2a9d8f', '#e76f51', '#6a4c93', '#e9c46a', '#4f772d'];
@@ -1577,12 +1656,10 @@ function renderClientEditOptions() {
   });
 
   if (clients.some(client => client.id === selected)) {
-    clientEditSelect.value = selected;
-    fillClientEditForm(selected);
+    const selectedClient = clients.find(client => client.id === selected) || null;
+    setClientEditSelection(selectedClient, { updateSearch: false });
   } else {
-    clientEditForm.reset();
-    clientEditImputadoStatusInput.value = 'no_imputado';
-    updateEditRepresentativeVisibility();
+    setClientEditSelection(null);
     clientEditAssignedToSelect.value = UNASSIGNED_LAWYER_LABEL;
     clientEditAssignedToSelect.disabled = true;
     if (deleteClientBtn) deleteClientBtn.disabled = true;
@@ -3231,8 +3308,8 @@ clientEditForm.addEventListener('submit', event => {
   });
   saveBookings(bookings);
   renderAll();
-  clientEditSelect.value = clientId;
-  fillClientEditForm(clientId);
+  const updatedClient = getVisibleClientsForSession().find(item => item.id === clientId) || null;
+  setClientEditSelection(updatedClient, { updateSearch: false });
   playSaveChime();
   showToast('Contacto actualizado correctamente.');
 });
@@ -3412,7 +3489,11 @@ prisonClientSelect.addEventListener('change', () => {
   const client = getClients().find(item => item.id === prisonClientSelect.value);
   setPrisonClientSelection(client || null, { updateSearch: false });
 });
-clientEditSelect.addEventListener('change', () => fillClientEditForm(clientEditSelect.value));
+if (clientEditSearchInput) clientEditSearchInput.addEventListener('input', queueClientEditSearch);
+clientEditSelect.addEventListener('change', () => {
+  const client = getVisibleClientsForSession().find(item => item.id === clientEditSelect.value);
+  setClientEditSelection(client || null, { updateSearch: false });
+});
 if (deleteClientBtn) {
   deleteClientBtn.addEventListener('click', () => {
     const clientId = String(clientEditSelect.value || '').trim();
@@ -3432,7 +3513,7 @@ if (deleteClientBtn) {
     saveClients(clients.filter(item => item.id !== clientId));
     saveBookings(getBookings().filter(booking => booking.clientId !== clientId));
     clientEditForm.reset();
-    clientEditSelect.value = '';
+    setClientEditSelection(null);
     if (deleteClientBtn) deleteClientBtn.disabled = true;
     renderAll();
     playSaveChime();
