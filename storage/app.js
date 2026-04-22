@@ -1762,7 +1762,7 @@ function getLawyerColor(name) {
 }
 
 function getCalendarBookings(selectedLawyer, selectedMonth, onlyShared = false, predicate = null) {
-  const allBookings = getVisibleBookingsForSession(getBookings()).filter(booking => booking.hiredLawyer && booking.status !== 'cancelada' && booking.date);
+  const allBookings = getBookings().filter(booking => booking.hiredLawyer && booking.status !== 'cancelada' && booking.date);
   const filteredBookings = typeof predicate === 'function' ? allBookings.filter(predicate) : allBookings;
   const byMonth = filteredBookings.filter(booking => !selectedMonth || booking.date.slice(0, 7) === selectedMonth);
   const byLawyer = byMonth.filter(booking => !selectedLawyer || booking.assignedTo === selectedLawyer);
@@ -1888,9 +1888,7 @@ function renderCalendar(container, bookings, selectedMonth) {
 }
 
 function renderAgendaCalendar() {
-  const role = getCurrentSessionRole();
-  const sessionLawyer = getCurrentSessionLawyerName();
-  const selectedLawyer = role === 'Abogada' && sessionLawyer ? sessionLawyer : lawyerFilter.value.trim();
+  const selectedLawyer = lawyerFilter.value.trim();
   const selectedMonth = agendaMonthInput.value;
   const bookings = getCalendarBookings(selectedLawyer, selectedMonth, false, booking => !isPrisonVisit(booking));
   const names = [...new Set(bookings.map(booking => booking.assignedTo).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es'));
@@ -2489,10 +2487,8 @@ Equipo TACAM`;
 }
 
 function renderAgenda() {
-  const role = getCurrentSessionRole();
-  const sessionLawyer = getCurrentSessionLawyerName();
-  const selectedLawyer = role === 'Abogada' && sessionLawyer ? sessionLawyer : lawyerFilter.value.trim();
-  const bookings = getVisibleBookingsForSession(getBookings()).filter(booking =>
+  const selectedLawyer = lawyerFilter.value.trim();
+  const bookings = getBookings().filter(booking =>
     booking.hiredLawyer && booking.status !== 'cancelada' && !isPrisonVisit(booking) && (!selectedLawyer || booking.assignedTo === selectedLawyer)
   );
 
