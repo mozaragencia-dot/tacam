@@ -561,8 +561,7 @@ function showLogin() {
 }
 
 const ALLOWED_CREDENTIALS = [
-  { username: 'admin', password: 'admin' },
-  { username: 'asistente', password: 'tacam321' }
+  { username: 'admin', password: 'admin' }
 ];
 
 const LAWYER_COLORS = ['#8f203a', '#2166a5', '#2a9d8f', '#e76f51', '#6a4c93', '#e9c46a', '#4f772d'];
@@ -574,36 +573,27 @@ const GENDARMERIA_RECIPIENTS = [
   { email: 'claudia.lizama@gendarmeria.cl', label: 'Cárcel Mujeres' },
 ];
 const GENDARMERIA_CC_RECIPIENTS = [
-  'administracion@tacam.cl',
-  'estudiojuridico@tacam.cl',
   'stapia@tacam.cl',
-  'asistente@tacam.cl',
-  'ccliment@tacam.cl',
   'vreichert@tacam.cl',
-  'daracena@tacam.cl',
-  'kserrano@tacam.cl'
+  'ccliment@tacam.cl',
+  'kserranokserrano@tacam.cl',
+  'daracena@tacam.cl'
 ];
 const DEFAULT_LAWYER_EMAILS = [
-  'administracion@tacam.cl',
-  'estudiojuridico@tacam.cl',
-  'asistente@tacam.cl',
-  'ccliment@tacam.cl',
-  'vreichert@tacam.cl',
   'stapia@tacam.cl',
-  'daracena@tacam.cl',
-  'kserrano@tacam.cl'
+  'vreichert@tacam.cl',
+  'ccliment@tacam.cl',
+  'kserranokserrano@tacam.cl',
+  'daracena@tacam.cl'
 ];
 
 
 const FIXED_USER_PROFILES = [
-  { name: 'ADMINISTRACION', role: 'Abogada', username: 'administracion', permissions: ['Visitas', 'Imputados', 'Editar contactos'] },
-  { name: 'ESTUDIOJURIDICO', role: 'Abogada', username: 'estudiojuridico', permissions: ['Visitas', 'Imputados', 'Editar contactos'] },
-  { name: 'ASISTENTE', role: 'Abogada', username: 'asistente', permissions: ['Visitas', 'Imputados', 'Editar contactos'] },
-  { name: 'CCLIMENT', role: 'Abogada', username: 'ccliment', permissions: ['Visitas', 'Imputados', 'Editar contactos'] },
-  { name: 'VREICHERT', role: 'Abogada', username: 'vreichert', permissions: ['Visitas', 'Imputados', 'Editar contactos'] },
   { name: 'STAPIA', role: 'Abogada', username: 'stapia', permissions: ['Visitas', 'Imputados', 'Editar contactos'] },
+  { name: 'VREICHERT', role: 'Abogada', username: 'vreichert', permissions: ['Visitas', 'Imputados', 'Editar contactos'] },
+  { name: 'CCLIMENT', role: 'Abogada', username: 'ccliment', permissions: ['Visitas', 'Imputados', 'Editar contactos'] },
+  { name: 'KSERRANOKSERRANO', role: 'Abogada', username: 'kserranokserrano', permissions: ['Visitas', 'Imputados', 'Editar contactos'] },
   { name: 'DARACENA', role: 'Abogada', username: 'daracena', permissions: ['Visitas', 'Imputados', 'Editar contactos'] },
-  { name: 'KSERRANO', role: 'Abogada', username: 'kserrano', permissions: ['Visitas', 'Imputados', 'Editar contactos'] },
   { name: 'Administrador TACAM', role: 'Admin', username: 'admin', permissions: ['Reservas', 'Agenda', 'Abogadas', 'Estadísticas'] }
 ];
 const ALLOWED_PROFILE_USERNAMES = new Set(FIXED_USER_PROFILES.map(item => item.username.toLowerCase()));
