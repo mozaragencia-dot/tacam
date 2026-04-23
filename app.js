@@ -444,7 +444,7 @@ const GENDARMERIA_RECIPIENTS = [
   'christian.bravo@gendarmeria.cl'
 ];
 const DEFAULT_LAWYER_EMAILS = [
-  'kserranokserrano@tacam.cl',
+  'kserrano@tacam.cl',
   'ccliment@tacam.cl',
   'vreichert@tacam.cl',
   'stapia@tacam.cl',
@@ -678,6 +678,54 @@ async function notifyVisitScheduled(booking) {
   return notifyBookingChannels(booking, message, isPrisonVisit(booking) ? 'TACAM: visita a la cárcel agendada' : 'Calendario de visitas TACAM: cita agendada');
 }
 
+function normalizeIdentityKey(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+  const lowered = raw.toLowerCase();
+  const email = lowered.includes('@') ? lowered : '';
+  const username = email ? email.split('@')[0] : lowered;
+  return username === 'kserranokserrano' ? 'kserrano' : username;
+}
+
+function resolveCanonicalLawyer(booking = {}) {
+  const assignedName = String(booking.assignedTo || '').trim();
+  const lawyers = getLawyers();
+  const profiles = getProfiles();
+
+  const matchedLawyerByName = lawyers.find(item => String(item.name || '').trim() === assignedName);
+  const candidateKeys = new Set([
+    normalizeIdentityKey(assignedName),
+    normalizeIdentityKey(matchedLawyerByName?.email),
+    normalizeIdentityKey(matchedLawyerByName?.username)
+  ].filter(Boolean));
+
+  const matchedProfile = profiles.find(profile => {
+    const keys = [profile.username, profile.email, profile.name].map(normalizeIdentityKey).filter(Boolean);
+    return keys.some(key => candidateKeys.has(key));
+  }) || null;
+
+  const matchedLawyerByProfile = lawyers.find(item => {
+    const keys = [item.name, item.email, item.username].map(normalizeIdentityKey).filter(Boolean);
+    return keys.some(key => candidateKeys.has(key));
+  }) || null;
+
+  const canonicalName = String(
+    matchedLawyerByProfile?.name
+    || matchedLawyerByName?.name
+    || matchedProfile?.name
+    || assignedName
+    || 'Sin asignar'
+  ).trim();
+  const canonicalRut = String(
+    matchedLawyerByProfile?.rut
+    || matchedLawyerByName?.rut
+    || matchedProfile?.rut
+    || '-'
+  ).trim() || '-';
+
+  return { name: canonicalName, rut: canonicalRut };
+}
+
 function getLawyerPhone(lawyerName) {
   const lawyer = getLawyers().find(item => (item.name || '').trim() === (lawyerName || '').trim());
   return lawyer ? cleanPhone(lawyer.phone) : '';
@@ -826,14 +874,33 @@ function isValidPhone(value) {
   return /^\+56(?:9\d{8}|\d{8,9})$/.test(String(value || ''));
 }
 
+function getChileNow() {
+  return new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Santiago' }));
+}
+
+function getChileGreeting(date = getChileNow()) {
+  const hour = date.getHours();
+  if (hour >= 6 && hour < 12) return 'Buenos días';
+  if (hour >= 12 && hour < 20) return 'Buenas tardes';
+  return 'Buenas noches';
+}
+
 function updateChileClock() {
   if (!chileClock) return;
-  chileClock.textContent = new Date().toLocaleTimeString('es-CL', {
-    timeZone: 'America/Santiago',
+  const now = getChileNow();
+  chileClock.textContent = now.toLocaleTimeString('es-CL', {
     hour: '2-digit',
     minute: '2-digit',
     second: '2-digit'
   });
+
+  const greetingNode = document.getElementById('header-greeting');
+  if (greetingNode) {
+    const session = getSession();
+    const displayName = String(session.profileName || session.username || '').trim();
+    const name = displayName || 'usuario';
+    greetingNode.textContent = `${getChileGreeting(now)}, ${name}`;
+  }
 }
 
 function getLawyerNames() {
@@ -1981,7 +2048,8 @@ function buildGendarmeriaListMessage(visits) {
   const rows = visits.map((booking, index) => {
     const modulo = booking.prisonModule || booking.representative?.modulo || '-';
     const visitTime = booking.notes ? String(booking.notes).slice(0, 40) : '30 minutos';
-    return `${index + 1}. ${booking.customer || '-'} | ${booking.date || '-'} | ${booking.time || '--:--'} | ${modulo} | ${visitTime} | ${booking.assignedTo || 'Sin asignar'} (RUT: ${booking.rut || '-'})`;
+    const canonicalLawyer = resolveCanonicalLawyer(booking);
+    return `${index + 1}. ${booking.customer || '-'} | ${booking.date || '-'} | ${booking.time || '--:--'} | ${modulo} | ${visitTime} | La abogada ${canonicalLawyer.name} (RUT: ${canonicalLawyer.rut})`;
   });
   return [...header, ...rows, '', 'TACAM - Sistema de Reservas'].join('\n');
 }
@@ -2582,7 +2650,7 @@ bookingForm.addEventListener('submit', async event => {
   updateBookingRepresentativeVisibility();
   renderAll();
   playSaveChime();
-  showToast('✅ Reserva guardada correctamente.');
+  showToast('OK: cita agendada correctamente.');
 });
 
 prisonBookingForm.addEventListener('submit', async event => {
@@ -2642,7 +2710,7 @@ prisonBookingForm.addEventListener('submit', async event => {
   setPrisonClientSelection(null);
   renderAll();
   playSaveChime();
-  showToast('Visita a la cárcel agendada correctamente.');
+  showToast('OK: visita a la cárcel agendada correctamente.');
 });
 
 clientRutInput.addEventListener('input', () => {

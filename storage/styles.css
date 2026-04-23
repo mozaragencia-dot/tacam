@@ -94,3 +94,5 @@ button:disabled{cursor:not-allowed;opacity:.7}
 .gendarmeria-banner-actions{display:grid;grid-template-columns:minmax(260px,1fr) auto;gap:10px;align-items:end}
 .gendarmeria-banner-actions button{white-space:nowrap}
 @media (max-width: 720px){.gendarmeria-banner-actions{grid-template-columns:1fr}}
+
+.header-greeting{margin:6px 0 0;font-weight:700;opacity:.95}
