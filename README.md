@@ -23,10 +23,17 @@ La app ahora puede enviar correos mediante `brevo-email.php`, manteniendo la API
 
 ### Variables necesarias en el servidor
 - `BREVO_API_KEY`
-- `BREVO_SENDER_EMAIL`
-- `BREVO_SENDER_NAME`
+- `BREVO_SENDER_EMAIL` (opcional, por defecto `noresponder@tacam.cl`)
+- `BREVO_SENDER_NAME` (opcional, por defecto `TACAM`)
 - `BREVO_REPLY_TO_EMAIL` (opcional)
 - `BREVO_REPLY_TO_NAME` (opcional)
+
+> Desde abril de 2026 el endpoint **ya no incluye fallback de API key** por seguridad.  
+> Si no configuras `BREVO_API_KEY`, `brevo-email.php` responderá con error `Brevo server config missing`.
+
+### Tipos de correo (plantillas distintas)
+- `templateType: "appointment_scheduled" | "reschedule" | "reminder_24h" | "reminder_1h" | "status_update"` para notificaciones de agendamiento, recordatorios y cambios.
+- `templateType: "gendarmeria_roster"` para la nómina de Gendarmería con el diseño formal original.
 
 ### Cómo probar localmente con PHP
 ```bash
@@ -39,6 +46,16 @@ php -S 127.0.0.1:4173
 Luego abre `http://127.0.0.1:4173` (en producción usar `https://www.apolo.tacam.cl`).
 
 > Importante: el remitente configurado en Brevo debe estar verificado en tu cuenta.
+
+### Diagnóstico rápido de fallas de correo
+1. Verifica que el servidor soporte PHP con `curl` habilitado.
+2. Prueba el endpoint directamente:
+   ```bash
+   curl -i -X POST http://127.0.0.1:4173/brevo-email.php \
+     -H "Content-Type: application/json" \
+     -d '{"toEmail":"test@example.com","toName":"Test","subject":"Prueba TACAM","textContent":"Hola"}'
+   ```
+3. Si falla, revisa el JSON de respuesta (`error` y `providerResponse`).
 
 ## Empaquetar para envío
 ```bash
