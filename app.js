@@ -106,6 +106,7 @@ const prisonClientSearchResults = document.getElementById('prison-client-search-
 const prisonClientSelectedLabel = document.getElementById('prison-client-selected-label');
 const prisonClientModuleInput = document.getElementById('prison-client-module');
 const chileClock = document.getElementById('chile-clock');
+const userGreeting = document.getElementById('user-greeting');
 const assignedToSelect = bookingForm.elements.assignedTo;
 const moduleTabs = document.querySelectorAll('[data-module-tab]');
 const modulePanels = document.querySelectorAll('[data-module-panel]');
@@ -444,7 +445,7 @@ const GENDARMERIA_RECIPIENTS = [
   'christian.bravo@gendarmeria.cl'
 ];
 const DEFAULT_LAWYER_EMAILS = [
-  'kserranokserrano@tacam.cl',
+  'kserrano@tacam.cl',
   'ccliment@tacam.cl',
   'vreichert@tacam.cl',
   'stapia@tacam.cl',
@@ -584,9 +585,30 @@ function hasNotificationConsent(booking) {
   return Boolean(booking?.notificationsConsent);
 }
 
-async function sendEmailViaBrevo(booking, subject, message) {
+function buildTemplateDataFromBooking(booking) {
+  return {
+    fecha: booking?.date || '-',
+    hora: booking?.time || '--:--',
+    abogado: booking?.assignedTo || 'Por confirmar',
+    area: normalizeMatterLabel(booking?.matter) || 'General',
+    ubicacion: 'Antofagasta, Chile'
+  };
+}
+
+function inferTemplateTypeFromSubject(subject = '') {
+  const normalized = String(subject || '').toLowerCase();
+  if (normalized.includes('24 horas')) return 'reminder_24h';
+  if (normalized.includes('recordatorio') || normalized.includes('vas a tener una cita')) return 'reminder_1h';
+  if (normalized.includes('reagend')) return 'reschedule';
+  if (normalized.includes('agendada')) return 'appointment_scheduled';
+  return 'status_update';
+}
+
+async function sendEmailViaBrevo(booking, subject, message, options = {}) {
   const email = String(booking?.email || '').trim();
   if (!email) return false;
+  const templateType = String(options.templateType || inferTemplateTypeFromSubject(subject));
+  const templateData = { ...buildTemplateDataFromBooking(booking), ...(options.templateData || {}) };
 
   try {
     const response = await fetch('brevo-email.php', {
@@ -596,7 +618,9 @@ async function sendEmailViaBrevo(booking, subject, message) {
         toEmail: email,
         toName: booking.customer || 'Cliente',
         subject,
-        textContent: message
+        textContent: message,
+        templateType,
+        templateData
       })
     });
 
@@ -657,7 +681,7 @@ function buildVisitScheduledMessage(booking) {
   return `Calendario de visitas TACAM: enviamos correo automático a la persona. Tu cita quedó agendada para ${booking.date} ${booking.time}. Materia: ${matter}. Abogada: ${booking.assignedTo || 'Por confirmar'}. Luego recibirás un recordatorio de que vas a tener una cita.`;
 }
 
-async function notifyBookingChannels(booking, message, emailSubject) {
+async function notifyBookingChannels(booking, message, emailSubject, options = {}) {
   if (!hasNotificationConsent(booking)) return false;
 
   const encoded = encodeURIComponent(message);
@@ -669,13 +693,18 @@ async function notifyBookingChannels(booking, message, emailSubject) {
     sent = true;
   });
 
-  const emailSent = await sendEmailViaBrevo(booking, emailSubject, message);
+  const emailSent = await sendEmailViaBrevo(booking, emailSubject, message, options);
   return sent || emailSent;
 }
 
 async function notifyVisitScheduled(booking) {
   const message = buildVisitScheduledMessage(booking);
-  return notifyBookingChannels(booking, message, isPrisonVisit(booking) ? 'TACAM: visita a la cárcel agendada' : 'Calendario de visitas TACAM: cita agendada');
+  return notifyBookingChannels(
+    booking,
+    message,
+    isPrisonVisit(booking) ? 'TACAM: visita a la cárcel agendada' : 'Calendario de visitas TACAM: cita agendada',
+    { templateType: 'appointment_scheduled' }
+  );
 }
 
 function getLawyerPhone(lawyerName) {
@@ -683,9 +712,30 @@ function getLawyerPhone(lawyerName) {
   return lawyer ? cleanPhone(lawyer.phone) : '';
 }
 
+function resolveLawyerIdentity(rawLawyerName) {
+  const clean = String(rawLawyerName || '').trim();
+  if (!clean) return { name: 'Valentina Reichert', rut: 'FULL' };
+  const normalized = clean.toLowerCase();
+  const lawyers = getLawyers();
+  const profiles = getProfiles();
+  const profileMatch = profiles.find(profile =>
+    String(profile.name || '').trim().toLowerCase() === normalized ||
+    String(profile.username || '').trim().toLowerCase() === normalized ||
+    String(profile.email || '').trim().toLowerCase() === normalized
+  );
+  const lawyerMatch = lawyers.find(lawyer =>
+    String(lawyer.name || '').trim().toLowerCase() === normalized ||
+    String(lawyer.email || '').trim().toLowerCase() === normalized ||
+    (profileMatch && String(lawyer.name || '').trim().toLowerCase() === String(profileMatch.name || '').trim().toLowerCase())
+  );
+  const name = String(lawyerMatch?.name || profileMatch?.name || clean).trim() || 'Valentina Reichert';
+  const rut = String(lawyerMatch?.rut || '').trim() || 'FULL';
+  return { name, rut };
+}
+
 async function notifyReschedule(booking, fromDate, toDate) {
   const message = buildRescheduleMessage(booking, fromDate, toDate);
-  return notifyBookingChannels(booking, message, 'Reagendamiento de cita TACAM');
+  return notifyBookingChannels(booking, message, 'Reagendamiento de cita TACAM', { templateType: 'reschedule' });
 }
 
 async function notifyUpcomingAppointments() {
@@ -701,7 +751,7 @@ async function notifyUpcomingAppointments() {
     if (diffMinutes < 0) continue;
 
     if (diffMinutes <= 1440 && !booking.reminder24hSentAt) {
-      const sent24h = await notifyBookingChannels(booking, build24hReminderMessage(booking), 'Recordatorio TACAM: cita en 24 horas');
+      const sent24h = await notifyBookingChannels(booking, build24hReminderMessage(booking), 'Recordatorio TACAM: cita en 24 horas', { templateType: 'reminder_24h' });
       if (sent24h) {
         booking.reminder24hSentAt = now.toISOString();
         hasUpdates = true;
@@ -710,7 +760,7 @@ async function notifyUpcomingAppointments() {
 
 
     if (diffMinutes <= 60 && !booking.reminder1hSentAt) {
-      const sent1h = await notifyBookingChannels(booking, buildReminderMessage(booking, diffMinutes), 'Recordatorio TACAM: vas a tener una cita');
+      const sent1h = await notifyBookingChannels(booking, buildReminderMessage(booking, diffMinutes), 'Recordatorio TACAM: vas a tener una cita', { templateType: 'reminder_1h' });
       if (sent1h) {
         booking.reminder1hSentAt = now.toISOString();
         hasUpdates = true;
@@ -834,6 +884,28 @@ function updateChileClock() {
     minute: '2-digit',
     second: '2-digit'
   });
+}
+
+function getGreetingPrefixByChileTime() {
+  const chileHour = Number(new Intl.DateTimeFormat('es-CL', {
+    timeZone: 'America/Santiago',
+    hour: '2-digit',
+    hour12: false
+  }).format(new Date()));
+  if (chileHour >= 5 && chileHour < 12) return 'Buenos días';
+  if (chileHour >= 12 && chileHour < 20) return 'Buenas tardes';
+  return 'Buenas noches';
+}
+
+function updateUserGreeting() {
+  if (!userGreeting) return;
+  const session = getSession();
+  const displayName = String(session?.profileName || session?.username || 'equipo TACAM').trim();
+  if (!session?.loggedIn) {
+    userGreeting.textContent = '';
+    return;
+  }
+  userGreeting.textContent = `${getGreetingPrefixByChileTime()}, ${displayName}.`;
 }
 
 function getLawyerNames() {
@@ -1998,6 +2070,19 @@ async function sendGendarmeriaRoster(visits, subject, options = {}) {
     return false;
   }
   const textContent = buildGendarmeriaListMessage(visits);
+  const leadLawyer = resolveLawyerIdentity(visits[0]?.assignedTo || '');
+  const templateData = {
+    fechaHoy: visits[0]?.date || new Date().toISOString().slice(0, 10),
+    totalVisitas: visits.length,
+    abogadaNombre: leadLawyer.name,
+    abogadaRut: leadLawyer.rut,
+    visits: visits.map(visit => ({
+      nombre: visit.customer || '',
+      rut: visit.rut || '',
+      modulo: visit.prisonModule || visit.representative?.modulo || '',
+      tiempo: visit.notes || ''
+    }))
+  };
   const lawyerEmails = [...new Set(visits
     .map(booking => {
       const lawyer = getLawyers().find(item => (item.name || '').trim() === (booking.assignedTo || '').trim());
@@ -2014,7 +2099,9 @@ async function sendGendarmeriaRoster(visits, subject, options = {}) {
           toEmail,
           toName: 'Gendarmería',
           subject,
-          textContent
+          textContent,
+          templateType: 'gendarmeria_roster',
+          templateData
         })
       });
       if (!response.ok) throw new Error(await response.text());
@@ -2300,6 +2387,7 @@ function renderProfiles() {
 }
 
 function renderAll() {
+  updateUserGreeting();
   renderLawyerOptions();
   renderClientOptions();
   renderClients();
@@ -2582,7 +2670,7 @@ bookingForm.addEventListener('submit', async event => {
   updateBookingRepresentativeVisibility();
   renderAll();
   playSaveChime();
-  showToast('✅ Reserva guardada correctamente.');
+  showToast('✅ OK: Reserva guardada correctamente.');
 });
 
 prisonBookingForm.addEventListener('submit', async event => {
@@ -2642,7 +2730,7 @@ prisonBookingForm.addEventListener('submit', async event => {
   setPrisonClientSelection(null);
   renderAll();
   playSaveChime();
-  showToast('Visita a la cárcel agendada correctamente.');
+  showToast('✅ OK: Visita a la cárcel agendada correctamente.');
 });
 
 clientRutInput.addEventListener('input', () => {
@@ -3197,6 +3285,7 @@ window.addEventListener('tacam-sync-status', event => {
 
 setInterval(() => {
   updateChileClock();
+  updateUserGreeting();
   if (!appShell.hidden) {
     void notifyUpcomingAppointments();
   }

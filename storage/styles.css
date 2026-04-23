@@ -7,6 +7,7 @@
 .brand-title.white img{height:36px}
 .brand-title span{display:block}
 .version-badge{display:inline-block;margin-top:8px;padding:4px 10px;border-radius:999px;background:#fff1f4;color:var(--wine-dark);font-size:12px;font-weight:700;border:1px solid rgba(255,255,255,.28)}
+.user-greeting{margin:6px 0 0;font-weight:700;font-size:14px;color:#ffe7ee}
 .header-clock{margin-left:auto;display:flex;flex-direction:column;align-items:flex-end;gap:2px;text-align:right}
 .header-clock small{font-size:11px;opacity:.9}
 .header-clock strong{font-size:20px;letter-spacing:.5px}
