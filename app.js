@@ -106,6 +106,7 @@ const prisonClientSearchResults = document.getElementById('prison-client-search-
 const prisonClientSelectedLabel = document.getElementById('prison-client-selected-label');
 const prisonClientModuleInput = document.getElementById('prison-client-module');
 const chileClock = document.getElementById('chile-clock');
+const userGreeting = document.getElementById('user-greeting');
 const assignedToSelect = bookingForm.elements.assignedTo;
 const moduleTabs = document.querySelectorAll('[data-module-tab]');
 const modulePanels = document.querySelectorAll('[data-module-panel]');
@@ -444,7 +445,7 @@ const GENDARMERIA_RECIPIENTS = [
   'christian.bravo@gendarmeria.cl'
 ];
 const DEFAULT_LAWYER_EMAILS = [
-  'kserranokserrano@tacam.cl',
+  'kserrano@tacam.cl',
   'ccliment@tacam.cl',
   'vreichert@tacam.cl',
   'stapia@tacam.cl',
@@ -883,6 +884,28 @@ function updateChileClock() {
     minute: '2-digit',
     second: '2-digit'
   });
+}
+
+function getGreetingPrefixByChileTime() {
+  const chileHour = Number(new Intl.DateTimeFormat('es-CL', {
+    timeZone: 'America/Santiago',
+    hour: '2-digit',
+    hour12: false
+  }).format(new Date()));
+  if (chileHour >= 5 && chileHour < 12) return 'Buenos días';
+  if (chileHour >= 12 && chileHour < 20) return 'Buenas tardes';
+  return 'Buenas noches';
+}
+
+function updateUserGreeting() {
+  if (!userGreeting) return;
+  const session = getSession();
+  const displayName = String(session?.profileName || session?.username || 'equipo TACAM').trim();
+  if (!session?.loggedIn) {
+    userGreeting.textContent = '';
+    return;
+  }
+  userGreeting.textContent = `${getGreetingPrefixByChileTime()}, ${displayName}.`;
 }
 
 function getLawyerNames() {
@@ -2364,6 +2387,7 @@ function renderProfiles() {
 }
 
 function renderAll() {
+  updateUserGreeting();
   renderLawyerOptions();
   renderClientOptions();
   renderClients();
@@ -3261,6 +3285,7 @@ window.addEventListener('tacam-sync-status', event => {
 
 setInterval(() => {
   updateChileClock();
+  updateUserGreeting();
   if (!appShell.hidden) {
     void notifyUpcomingAppointments();
   }
